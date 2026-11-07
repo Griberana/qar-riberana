@@ -1,0 +1,3009 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sistema QAR Riberana</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=Inter:wght@400;500;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+:root {
+  --grafito:#545959; --terracota:#B87656; --pizarra:#568294;
+  --crema:#E1DCC7; --gris-azul:#8E9FA3;
+  --bg:#F5F3EE; --surface:#FFFFFF; --surface-2:#EEECE6;
+  --border:#D6D3C8; --fg:#2A2C2C; --fg-muted:#666B6B;
+  --accent:var(--terracota); --ok:#3D8A5B; --warn:#D4A017;
+  --danger:#C0392B;
+  --font-display:'Barlow Condensed',system-ui,sans-serif;
+  --font-body:'Inter',system-ui,sans-serif;
+  --r:8px; --r-lg:12px;
+  color-scheme:light;
+}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#1E2020;--surface:#272B2B;--surface-2:#1A1D1D;
+  --border:#3A3F3F;--fg:#EAE7DE;--fg-muted:#8A9090;
+  --ok:#4CAF76;--warn:#E8B84B;color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#1E2020;--surface:#272B2B;--surface-2:#1A1D1D;
+  --border:#3A3F3F;--fg:#EAE7DE;--fg-muted:#8A9090;
+  --ok:#4CAF76;--warn:#E8B84B;color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-body);background:var(--bg);color:var(--fg);font-size:14px;line-height:1.5;
+  padding-left:max(0px,env(safe-area-inset-left,0px));
+  padding-right:max(0px,env(safe-area-inset-right,0px));min-height:100vh;}
+
+/* ── SCREENS ── */
+.screen{display:none;min-height:100vh;}
+.screen.active{display:flex;}
+
+/* ── HOME / HISTORY SCREEN ── */
+#screen-home{flex-direction:column;align-items:center;padding:40px 16px 80px;}
+.home-logo{text-align:center;margin-bottom:32px;}
+.home-logo .brand{font-family:var(--font-display);font-size:32px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--grafito);}
+:root[data-theme="dark"] .home-logo .brand,:root:not([data-theme="light"]) .home-logo .brand{color:var(--fg);}
+.home-logo .sub{font-size:12px;color:var(--fg-muted);letter-spacing:.08em;text-transform:uppercase;margin-top:4px;}
+.new-rev-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
+  padding:24px;width:100%;max-width:520px;margin-bottom:24px;}
+.new-rev-card h2{font-family:var(--font-display);font-size:20px;font-weight:700;letter-spacing:.03em;
+  text-transform:uppercase;margin-bottom:16px;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.form-grid .span2{grid-column:span 2;}
+.field label{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--fg-muted);display:block;margin-bottom:4px;}
+.field input,.field select{width:100%;border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;
+  font-family:var(--font-body);font-size:13px;background:var(--surface);color:var(--fg);}
+.mode-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.mode-card{padding:12px;border:2px solid var(--border);border-radius:var(--r-lg);cursor:pointer;transition:border-color .15s,background .15s;}
+.mode-card.sel{border-color:var(--terracota);background:rgba(184,118,86,.08);}
+.mode-card .mc-icon{font-size:24px;margin-bottom:4px;}
+.mode-card .mc-title{font-family:var(--font-display);font-size:15px;font-weight:700;text-transform:uppercase;}
+.mode-card .mc-desc{font-size:11px;color:var(--fg-muted);margin-top:2px;}
+.hist-section{width:100%;max-width:520px;}
+.hist-title{font-family:var(--font-display);font-size:16px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.04em;margin-bottom:10px;color:var(--fg-muted);}
+.hist-list{display:flex;flex-direction:column;gap:8px;}
+.hist-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
+  padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:background .1s;}
+.hist-item:hover{background:var(--surface-2);}
+.hist-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.hi-info{flex:1;min-width:0;}
+.hi-prop{font-weight:600;font-size:13px;}
+.hi-sub{font-size:11px;color:var(--fg-muted);}
+.hi-score{font-family:var(--font-display);font-size:22px;font-weight:700;}
+.hi-score.sc-high{color:var(--ok);}
+.hi-score.sc-mid{color:var(--warn);}
+.hi-score.sc-low{color:var(--danger);}
+.hi-actions{display:flex;gap:6px;}
+.hist-empty{text-align:center;padding:24px;color:var(--fg-muted);font-size:13px;
+  background:var(--surface);border:1px dashed var(--border);border-radius:var(--r-lg);}
+
+/* ── LOGIN / REGISTRO / ADMIN ── */
+#screen-login,#screen-registro{flex-direction:column;align-items:center;justify-content:center;padding:40px 16px;}
+.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
+  padding:32px 28px;width:100%;max-width:400px;}
+.auth-logo{text-align:center;margin-bottom:28px;}
+.auth-logo .brand{font-family:var(--font-display);font-size:28px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--grafito);}
+:root[data-theme="dark"] .auth-logo .brand,:root:not([data-theme="light"]) .auth-logo .brand{color:var(--fg);}
+.auth-logo .sub{font-size:11px;color:var(--fg-muted);letter-spacing:.08em;text-transform:uppercase;margin-top:4px;}
+.auth-title{font-family:var(--font-display);font-size:18px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;margin-bottom:20px;}
+.auth-field{margin-bottom:14px;}
+.auth-field label{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--fg-muted);display:block;margin-bottom:4px;}
+.auth-field input{width:100%;border:1px solid var(--border);border-radius:var(--r);padding:9px 11px;
+  font-family:var(--font-body);font-size:14px;background:var(--surface);color:var(--fg);}
+.auth-field input:focus{outline:none;border-color:var(--pizarra);}
+.auth-error{font-size:12px;color:var(--danger);margin-bottom:12px;display:none;}
+.auth-hotels{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+.auth-hotel-opt{padding:9px 10px;border:2px solid var(--border);border-radius:var(--r);cursor:pointer;font-size:12px;
+  display:flex;align-items:center;gap:6px;transition:border-color .15s,background .15s;}
+.auth-hotel-opt.sel{border-color:var(--pizarra);background:rgba(86,130,148,.1);}
+.auth-hotel-opt input{width:14px;height:14px;cursor:pointer;accent-color:var(--pizarra);}
+.auth-link{font-size:12px;color:var(--pizarra);cursor:pointer;text-align:center;margin-top:14px;text-decoration:underline;}
+
+/* ── ADMIN ── */
+#screen-admin{flex-direction:column;align-items:center;padding:24px 16px 80px;}
+.admin-wrap{width:100%;max-width:700px;}
+.user-row{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
+  padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:8px;}
+.user-row-info{flex:1;min-width:0;}
+.user-row-name{font-weight:600;font-size:13px;}
+.user-row-email{font-size:11px;color:var(--fg-muted);}
+.user-row-hotels{font-size:11px;color:var(--pizarra);margin-top:2px;}
+.user-status-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.user-status-dot.active{background:var(--ok);}
+.user-status-dot.inactive{background:var(--fg-muted);}
+.user-actions{display:flex;gap:6px;flex-wrap:wrap;}
+
+/* ── DASHBOARD ── */
+.dash-kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;}
+.dash-kpi-label{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--fg-muted);margin-bottom:4px;}
+.dash-kpi-value{font-family:var(--font-display);font-size:28px;font-weight:700;line-height:1;}
+.dash-kpi-sub{font-size:11px;color:var(--fg-muted);margin-top:2px;}
+.dash-prop-tab{padding:6px 14px;border:1px solid var(--border);border-radius:20px;font-size:11px;font-weight:600;
+  cursor:pointer;transition:background .15s;background:var(--surface);color:var(--fg);}
+.dash-prop-tab.sel{background:var(--pizarra);color:#fff;border-color:var(--pizarra);}
+.ranking-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);}
+.ranking-row:last-child{border-bottom:none;}
+.ranking-bar-wrap{flex:1;height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden;}
+.ranking-bar{height:100%;border-radius:3px;background:var(--terracota);}
+.ranking-pct{font-size:11px;font-weight:600;min-width:28px;text-align:right;color:var(--danger);}
+.kpi-sec-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);}
+.kpi-sec-row:last-child{border-bottom:none;}
+.kpi-sec-name{flex:1;font-size:12px;}
+.kpi-sec-bar-wrap{width:60px;height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden;}
+.kpi-sec-bar{height:100%;border-radius:3px;}
+.kpi-sec-pct{font-size:11px;font-weight:600;min-width:30px;text-align:right;}
+
+/* ── INSPECTION SCREEN ── */
+#screen-inspect{flex-direction:row;}
+.sidebar{width:252px;min-width:252px;background:var(--grafito);color:#fff;display:flex;
+  flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.sb-logo{padding:16px 20px 12px;border-bottom:1px solid rgba(255,255,255,.12);}
+.sb-logo .brand{font-family:var(--font-display);font-size:18px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;}
+.sb-logo .sub{font-size:10px;color:var(--gris-azul);letter-spacing:.06em;text-transform:uppercase;margin-top:1px;}
+.sb-prop{padding:10px 20px;background:rgba(0,0,0,.18);font-size:12px;color:rgba(255,255,255,.7);}
+.sb-prop strong{color:#fff;display:block;font-size:13px;}
+.sb-hab-strip{padding:8px 16px;background:rgba(0,0,0,.15);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.hab-tab{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:none;
+  background:rgba(255,255,255,.12);color:rgba(255,255,255,.6);transition:background .12s,color .12s;}
+.hab-tab.active{background:var(--terracota);color:#fff;}
+.hab-tab-add{padding:4px 8px;border-radius:20px;font-size:14px;font-weight:700;cursor:pointer;border:none;
+  background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);transition:background .12s;}
+.hab-tab-add:hover{background:rgba(255,255,255,.18);color:#fff;}
+.sb-nav{flex:1;overflow-y:auto;padding:6px 12px 12px;}
+.nav-grp-title{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--gris-azul);padding:8px 8px 3px;}
+.nav-item{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:var(--r);font-size:12px;
+  cursor:pointer;color:rgba(255,255,255,.65);transition:background .12s,color .12s;border:none;background:transparent;
+  width:100%;text-align:left;}
+.nav-item:hover{background:rgba(255,255,255,.08);color:#fff;}
+.nav-item.active{background:rgba(255,255,255,.12);color:#fff;}
+.ni-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.2);flex-shrink:0;}
+.nav-item.nav-ok .ni-dot{background:var(--ok);}
+.nav-item.nav-warn .ni-dot{background:var(--warn);}
+.nav-item.nav-danger .ni-dot{background:var(--danger);}
+.sb-score{padding:12px 20px;border-top:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.2);}
+.sc-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--gris-azul);margin-bottom:2px;}
+.sc-big{font-family:var(--font-display);font-size:36px;font-weight:700;line-height:1;color:#fff;}
+.sc-big.sc-high{color:#5DD68A;} .sc-big.sc-mid{color:var(--warn);} .sc-big.sc-low{color:#FF6B6B;}
+.sc-bars{margin-top:6px;display:grid;gap:3px;}
+.sc-bar-row{display:flex;align-items:center;gap:5px;}
+.sc-bar-lbl{font-size:10px;color:rgba(255,255,255,.45);width:68px;flex-shrink:0;}
+.sc-bar-track{flex:1;height:3px;background:rgba(255,255,255,.12);border-radius:2px;}
+.sc-bar-fill{height:100%;border-radius:2px;background:var(--terracota);transition:width .4s;}
+.sc-bar-val{font-size:10px;color:rgba(255,255,255,.55);width:30px;text-align:right;font-variant-numeric:tabular-nums;}
+.sb-footer{padding:10px 14px;border-top:1px solid rgba(255,255,255,.12);display:flex;gap:6px;}
+
+/* ── MAIN ── */
+.main{flex:1;min-width:0;padding:20px max(20px,env(safe-area-inset-right,0px)) 80px max(20px,env(safe-area-inset-left,0px));max-width:960px;}
+
+.pg-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
+.pg-title{font-family:var(--font-display);font-size:26px;font-weight:700;letter-spacing:.02em;text-transform:uppercase;line-height:1.1;}
+.pg-meta{font-size:11px;color:var(--fg-muted);margin-top:2px;}
+.hdr-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap;}
+
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:var(--r);
+  font-family:var(--font-body);font-size:12px;font-weight:600;border:none;cursor:pointer;
+  transition:opacity .12s,transform .08s;text-decoration:none;white-space:nowrap;}
+.btn:active{transform:scale(.97);}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-secondary{background:var(--surface);color:var(--fg);border:1px solid var(--border);}
+.btn-pizarra{background:var(--pizarra);color:#fff;}
+.btn-danger{background:var(--danger);color:#fff;}
+.btn-ok{background:var(--ok);color:#fff;}
+.btn-sm{padding:5px 10px;font-size:11px;}
+
+.view-tabs{display:flex;gap:0;margin-bottom:16px;border-bottom:2px solid var(--border);}
+.view-tab{padding:8px 14px;font-size:13px;font-weight:600;color:var(--fg-muted);cursor:pointer;
+  border-bottom:2px solid transparent;margin-bottom:-2px;background:none;border-top:none;
+  border-left:none;border-right:none;font-family:var(--font-body);transition:color .12s,border-color .12s;}
+.view-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* meta panel */
+.meta-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
+  padding:14px;margin-bottom:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;}
+.meta-field label{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--fg-muted);display:block;margin-bottom:3px;}
+.meta-field input,.meta-field select{width:100%;border:1px solid var(--border);border-radius:var(--r);
+  padding:6px 9px;font-family:var(--font-body);font-size:13px;background:var(--surface);color:var(--fg);}
+
+/* habitacion nav */
+.hab-nav-bar{display:flex;gap:6px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
+.hab-pill{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);
+  background:var(--surface);color:var(--fg-muted);transition:all .12s;}
+.hab-pill.active{background:var(--pizarra);border-color:var(--pizarra);color:#fff;}
+.hab-pill-add{padding:5px 10px;border-radius:20px;font-size:13px;font-weight:700;cursor:pointer;
+  border:1px dashed var(--border);background:transparent;color:var(--fg-muted);transition:all .12s;}
+.hab-pill-add:hover{border-color:var(--accent);color:var(--accent);}
+.hab-delete-btn{padding:3px 8px;border-radius:var(--r);font-size:10px;border:none;cursor:pointer;
+  background:rgba(192,57,43,.1);color:var(--danger);font-weight:600;}
+
+/* ── HAB SECTION DIVIDER ── */
+.hab-section-divider{display:flex;align-items:center;gap:10px;margin:20px 0 10px;}
+.hab-div-line{flex:1;height:1px;background:var(--pizarra);opacity:.3;}
+.hab-div-label{font-family:var(--font-display);font-size:12px;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--pizarra);white-space:nowrap;}
+.hab-section-nav{background:rgba(86,130,148,.07);border:1px solid rgba(86,130,148,.2);
+  border-radius:var(--r-lg);padding:10px 14px;margin-bottom:12px;}
+
+/* section cards */
+.sec-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);margin-bottom:12px;overflow:hidden;}
+.sec-hdr{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;user-select:none;
+  background:var(--surface);border-bottom:1px solid transparent;transition:background .1s;}
+.sec-hdr:hover{background:var(--surface-2);}
+.sec-card.open .sec-hdr{border-bottom-color:var(--border);}
+.sec-icon{width:30px;height:30px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;
+  font-size:15px;flex-shrink:0;background:var(--surface-2);}
+.sec-title-grp{flex:1;min-width:0;}
+.sec-title{font-family:var(--font-display);font-size:15px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;}
+.sec-sub{font-size:10px;color:var(--fg-muted);}
+.sec-prog{font-size:11px;font-variant-numeric:tabular-nums;color:var(--fg-muted);white-space:nowrap;}
+.chevron{width:16px;height:16px;flex-shrink:0;color:var(--fg-muted);transition:transform .2s;}
+.sec-card.open .chevron{transform:rotate(90deg);}
+.sec-body{display:none;}
+.sec-card.open .sec-body{display:block;}
+
+/* LTR section */
+.ltr-panel{padding:14px 16px;display:flex;flex-direction:column;gap:10px;}
+.ltr-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:380px;}
+.ltr-input{border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;font-family:var(--font-body);
+  font-size:16px;font-weight:700;background:var(--surface);color:var(--fg);width:100%;}
+.ltr-pct{font-size:11px;color:var(--fg-muted);margin-top:3px;}
+.ltr-refs{background:var(--surface-2);border-radius:var(--r);padding:9px 12px;font-size:11px;color:var(--fg-muted);}
+
+/* element table */
+.el-tbl{width:100%;border-collapse:collapse;}
+.el-tbl th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--fg-muted);
+  font-weight:600;padding:7px 12px;background:var(--surface-2);border-bottom:1px solid var(--border);}
+.el-tbl td{padding:7px 12px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.el-tbl tr:last-child td{border-bottom:none;}
+.el-tbl tr.no-conf td{background:rgba(192,57,43,.05);}
+.el-name{font-size:13px;font-weight:500;}
+.el-ref{font-size:10px;color:var(--fg-muted);display:block;}
+
+.ub{display:inline-flex;align-items:center;font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.05em;padding:2px 7px;border-radius:10px;white-space:nowrap;}
+.ub-c{background:#FDECEA;color:#C0392B;} .ub-a{background:#FEF3E2;color:#E67E22;}
+.ub-m{background:#FEFAE3;color:#8B6914;} .ub-b{background:#EAF5EE;color:#3D8A5B;}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  .ub-c{background:rgba(192,57,43,.18);color:#FF8A80;}
+  .ub-a{background:rgba(230,126,34,.15);color:#FFAB40;}
+  .ub-m{background:rgba(212,160,23,.15);color:#FFD54F;}
+  .ub-b{background:rgba(61,138,91,.15);color:#69DB7C;}
+}}
+:root[data-theme="dark"]{
+  .ub-c{background:rgba(192,57,43,.18);color:#FF8A80;}
+  .ub-a{background:rgba(230,126,34,.15);color:#FFAB40;}
+  .ub-m{background:rgba(212,160,23,.15);color:#FFD54F;}
+  .ub-b{background:rgba(61,138,91,.15);color:#69DB7C;}
+}
+
+.conf-ctrl{display:flex;gap:2px;}
+.conf-btn{padding:4px 9px;border:1px solid var(--border);background:var(--surface);color:var(--fg-muted);
+  font-size:11px;font-weight:600;cursor:pointer;transition:background .1s,color .1s,border-color .1s;border-radius:0;}
+.conf-btn:first-child{border-radius:var(--r) 0 0 var(--r);}
+.conf-btn:last-child{border-radius:0 var(--r) var(--r) 0;}
+.conf-btn.sel-ok{background:var(--ok);border-color:var(--ok);color:#fff;}
+.conf-btn.sel-na{background:var(--fg-muted);border-color:var(--fg-muted);color:#fff;}
+.conf-btn.sel-no{background:var(--danger);border-color:var(--danger);color:#fff;}
+
+/* extras row */
+.el-extra{display:none;padding:8px 12px 10px;background:var(--surface-2);border-bottom:1px solid var(--border);}
+.el-extra.vis{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;}
+.cat-toggle{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap;}
+.cat-btn{font-size:11px;padding:3px 9px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface);color:var(--fg);cursor:pointer;transition:all .15s;}
+.cat-btn.sel-mant{background:#1a4f8a;color:#fff;border-color:#1a4f8a;}
+.cat-btn.sel-limp{background:#2e7d32;color:#fff;border-color:#2e7d32;}
+.cat-btn.sel-ambos{background:linear-gradient(90deg,#1a4f8a 50%,#2e7d32 50%);color:#fff;border-color:#1a4f8a;}
+.cat-label{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--fg-muted);margin-bottom:2px;}
+.el-extra textarea{flex:1;min-width:160px;border:1px solid var(--border);border-radius:var(--r);
+  padding:5px 8px;font-family:var(--font-body);font-size:12px;background:var(--surface);color:var(--fg);
+  resize:vertical;min-height:48px;}
+
+/* foto multi */
+.foto-strip{display:flex;gap:6px;flex-wrap:wrap;align-items:flex-start;}
+.foto-thumb{width:52px;height:52px;border-radius:var(--r);overflow:hidden;position:relative;flex-shrink:0;border:1px solid var(--border);}
+.foto-thumb img{width:100%;height:100%;object-fit:cover;}
+.foto-thumb .del-foto{position:absolute;top:1px;right:1px;width:16px;height:16px;border-radius:50%;
+  background:rgba(0,0,0,.7);color:#fff;border:none;cursor:pointer;font-size:10px;
+  display:flex;align-items:center;justify-content:center;line-height:1;}
+.foto-add{width:52px;height:52px;border:1.5px dashed var(--border);border-radius:var(--r);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--fg-muted);
+  font-size:20px;position:relative;flex-shrink:0;transition:border-color .12s;}
+.foto-add:hover{border-color:var(--accent);}
+.foto-add input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0;}
+
+/* banner */
+.banner-danger{background:#FDECEA;border:1px solid var(--danger);border-radius:var(--r);padding:9px 13px;
+  font-size:12px;color:var(--danger);font-weight:600;display:flex;gap:7px;align-items:center;margin-bottom:12px;}
+:root[data-theme="dark"] .banner-danger,:root:not([data-theme="light"]) .banner-danger{background:rgba(192,57,43,.15);}
+
+/* sticky bar */
+.sticky-bar{position:sticky;bottom:0;background:var(--bg);border-top:1px solid var(--border);
+  padding:10px 0;display:flex;gap:8px;flex-wrap:wrap;margin:0 -20px;
+  padding-left:max(20px,env(safe-area-inset-left,0px));
+  padding-right:max(20px,env(safe-area-inset-right,0px));
+  padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:10;}
+
+/* ── REPORT VIEW ── */
+.rep-hdr-card{background:var(--grafito);color:#fff;border-radius:var(--r-lg);padding:18px 22px;margin-bottom:14px;}
+.rep-title{font-family:var(--font-display);font-size:22px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-bottom:3px;}
+.rep-sub{font-size:11px;color:var(--gris-azul);}
+.rep-score-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:14px;}
+.rsc{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:12px;text-align:center;}
+.rsc-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--fg-muted);margin-bottom:5px;}
+.rsc-val{font-family:var(--font-display);font-size:30px;font-weight:700;line-height:1;}
+.rsc-val.sc-high{color:var(--ok);} .rsc-val.sc-mid{color:var(--warn);}
+.rsc-val.sc-low{color:var(--danger);} .rsc-val.sc-fail{color:var(--danger);}
+
+/* HAB summary in report */
+.hab-summary-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.hab-summary-row:last-child{border-bottom:none;}
+.hab-num{font-weight:700;min-width:80px;}
+.hab-badges{display:flex;gap:4px;flex-wrap:wrap;}
+
+.pend-list{list-style:none;}
+.pend-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.pend-item:last-child{border-bottom:none;}
+.pend-area{font-size:10px;color:var(--fg-muted);}
+.pend-nota{font-size:11px;color:var(--fg-muted);margin-top:1px;font-style:italic;}
+/* fotos en reporte */
+.pend-fotos{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px;}
+.pend-foto-thumb{width:44px;height:44px;border-radius:var(--r);object-fit:cover;border:1px solid var(--border);cursor:pointer;}
+
+/* BC panel */
+.bc-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;margin-bottom:14px;}
+.bc-hdr{background:var(--pizarra);color:#fff;padding:11px 15px;display:flex;align-items:center;gap:9px;}
+.bc-hdr h3{font-size:14px;font-weight:600;}
+.bc-body{padding:12px 15px;}
+.bc-pre{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r);padding:9px 11px;
+  font-size:11px;font-family:monospace;white-space:pre-wrap;word-break:break-word;color:var(--fg);
+  margin-bottom:9px;max-height:180px;overflow-y:auto;}
+
+/* section card util */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);margin-bottom:14px;overflow:hidden;}
+.card-hdr{padding:12px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.card-hdr h3{font-family:var(--font-display);font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;}
+.card-body{padding:14px 15px;}
+
+/* empty */
+.empty-st{text-align:center;padding:36px 16px;color:var(--fg-muted);}
+.empty-icon{font-size:36px;margin-bottom:8px;}
+.empty-st h3{font-size:15px;color:var(--fg);margin-bottom:5px;}
+
+/* modal */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal-backdrop.hidden{display:none;}
+.modal-box{background:var(--surface);border-radius:var(--r-lg);padding:24px;width:100%;max-width:360px;}
+.modal-box h3{font-family:var(--font-display);font-size:18px;font-weight:700;text-transform:uppercase;margin-bottom:12px;}
+.modal-actions{display:flex;gap:8px;margin-top:16px;justify-content:flex-end;}
+
+/* photo lightbox */
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:200;display:flex;align-items:center;justify-content:center;}
+.lightbox.hidden{display:none;}
+.lightbox img{max-width:90vw;max-height:90vh;border-radius:var(--r);}
+.lightbox-close{position:absolute;top:16px;right:16px;background:rgba(255,255,255,.15);border:none;color:#fff;
+  width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;}
+
+/* mobile */
+@media(max-width:640px){
+  .sidebar{display:none;}
+  .main{padding:14px max(14px,env(safe-area-inset-right,0px)) 80px max(14px,env(safe-area-inset-left,0px));}
+  .mob-bar{display:flex;align-items:center;gap:8px;background:var(--grafito);color:#fff;
+    padding:11px 14px;margin:-14px -14px 14px;position:sticky;top:0;z-index:20;}
+  .mob-bar .brand{font-family:var(--font-display);font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+  .mob-score{margin-left:auto;font-family:var(--font-display);font-size:20px;font-weight:700;}
+  .form-grid{grid-template-columns:1fr;}
+  .form-grid .span2{grid-column:1;}
+  .mode-cards{grid-template-columns:1fr;}
+}
+@media(min-width:641px){.mob-bar{display:none;}}
+</style>
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  DATA
+// ══════════════════════════════════════════════════════════
+const PROPIEDADES = {
+  MX051:{nombre:'Comfort Inn Monterrey Valle',clave:'MX051'},
+  MX056:{nombre:'Comfort Inn Tampico',clave:'MX056'},
+  MX061:{nombre:'Comfort Inn Puerto Vallarta',clave:'MX061'},
+};
+
+const UL = {critica:'CRÍTICA',alta:'ALTA',media:'MEDIA',baja:'BAJA'};
+const UC = {critica:'ub-c',alta:'ub-a',media:'ub-m',baja:'ub-b'};
+const scoreClass = p => p>=85?'sc-high':p>=70?'sc-mid':'sc-low';
+
+const SECTIONS = [
+  {id:'auto_fail',icon:'⚡',title:'Ítem Crítico QAR',sub:'Falla automática — R&R 600.1',items:[
+    {id:'cf1',name:'Señalización exterior correctamente iluminada y en buen estado (letreros)',ref:'R&R 600.1',pts:100,urg:'critica',diario:true,critico:true},
+  ]},
+  {id:'ltr',icon:'⭐',title:'LTR — Satisfacción del Huésped',sub:'25% del QAR · Puntuación de encuestas',isLTR:true,items:[]},
+  {id:'exterior',icon:'🏨',title:'Fachada y Exterior',sub:'Cleanliness + Condition · Primera impresión',items:[
+    {id:'e1',name:'Luminarias exteriores limpias y en buen estado',ref:'LIMPIEZA',pts:3,urg:'alta',diario:true},
+    {id:'e2',name:'Luminarias exteriores funcionando (todas)',ref:'CONDICION',pts:5,urg:'alta',diario:true},
+    {id:'e3',name:'Muros exteriores limpios y bien pintados',ref:'CONDICION',pts:4,urg:'media',diario:false},
+    {id:'e4',name:'Áreas verdes limpias y recortadas',ref:'LIMPIEZA',pts:3,urg:'media',diario:true},
+    {id:'e5',name:'Áreas de fumar sin colillas',ref:'LIMPIEZA',pts:2,urg:'media',diario:true},
+    {id:'e6',name:'Puertas y portones en buen estado',ref:'CONDICION',pts:3,urg:'media',diario:false},
+    {id:'e7',name:'Letreros limpios y en buen estado',ref:'R&R 600.1',pts:5,urg:'alta',diario:true},
+    {id:'e8',name:'Basureros exteriores limpios y en buen estado',ref:'LIMPIEZA',pts:2,urg:'baja',diario:true},
+    {id:'e9',name:'Piso de estacionamiento limpio',ref:'LIMPIEZA',pts:2,urg:'media',diario:true},
+    {id:'e10',name:'Estacionamiento bien iluminado',ref:'CONDICION',pts:4,urg:'alta',diario:true},
+    {id:'ts4',name:'Vista/fachada de edificio en buen estado y limpia',ref:'CONDICION',pts:3,urg:'media',diario:false},
+  ]},
+  {id:'recepcion',icon:'🛎️',title:'Recepción y Lobby',sub:'Brand Standards + Cleanliness · Área pública principal',items:[
+    {id:'r1',name:'Gafetes correctos, en buen estado y bien etiquetados',ref:'R&R 100.3',pts:3,urg:'alta',diario:true},
+    {id:'r2',name:'Uniforme completo y presentación del personal',ref:'R&R 100.3',pts:2,urg:'alta',diario:true},
+    {id:'r3',name:'Estación de Café/Agua correctamente conformada',ref:'R&R 120.9',pts:5,urg:'alta',diario:true},
+    {id:'r4',name:'Estación de Café/Agua: vasitos/copas disponibles',ref:'R&R 120.9',pts:2,urg:'media',diario:true},
+    {id:'r5',name:'Estación de Café/Agua: limpia y sin desbordamiento',ref:'R&R 120.9',pts:2,urg:'media',diario:true},
+    {id:'r6',name:'Impresos de BC disponible o Aviso a Huéspedes de Impresión en Recepción',ref:'R&R 110.5',pts:1,urg:'media',diario:false},
+    {id:'r7',name:'Lobby limpio: piso, mesas, sofás',ref:'LIMPIEZA',pts:3,urg:'alta',diario:true},
+    {id:'r8',name:'Baños públicos limpios, abastecidos y sin malos olores',ref:'LIMPIEZA',pts:4,urg:'alta',diario:true},
+    {id:'r9',name:'Baños públicos en buen estado (accesorios, pintura)',ref:'CONDICION',pts:3,urg:'media',diario:false},
+    {id:'r10',name:'Área de fitness/gym limpia y equipada',ref:'LIMPIEZA',pts:3,urg:'media',diario:true},
+  ]},
+  {id:'comedor',icon:'🍽️',title:'Comedor, Terraza y Jardín',sub:'Cleanliness + Brand Standards · Áreas de servicio F&B y exteriores',items:[
+    {id:'com1',name:'Comedor limpio: piso, mesas, sillas, cristales y puertas',ref:'LIMPIEZA',pts:4,urg:'alta',diario:true},
+    {id:'com2',name:'Mesas correctamente montadas (mantelería, cubiertos)',ref:'BRAND',pts:3,urg:'alta',diario:true},
+    {id:'com3',name:'Buffet/servicio en estación ordenado y limpio',ref:'LIMPIEZA',pts:3,urg:'alta',diario:true},
+    {id:'com4',name:'Área de bebidas limpia y abastecida',ref:'LIMPIEZA',pts:2,urg:'media',diario:true},
+    {id:'com5',name:'Iluminación del comedor adecuada y funcionando',ref:'CONDICION',pts:2,urg:'media',diario:false},
+    {id:'com6',name:'Aire acondicionado del comedor funcionando',ref:'CONDICION',pts:3,urg:'alta',diario:true},
+    {id:'com7',name:'Paredes y techo del comedor limpios y en buen estado',ref:'CONDICION',pts:3,urg:'media',diario:false},
+    {id:'com8',name:'Terraza del restaurante limpia (piso, mobiliario)',ref:'LIMPIEZA',pts:3,urg:'alta',diario:true},
+    {id:'com9',name:'Mobiliario de terraza en buen estado (sin oxidación, sin roturas)',ref:'CONDICION',pts:3,urg:'media',diario:false},
+    {id:'com10',name:'Terraza libre de agua estancada o residuos',ref:'LIMPIEZA',pts:2,urg:'media',diario:true},
+    {id:'com11',name:'Jardín limpio (sin basura, hojas, residuos)',ref:'LIMPIEZA',pts:3,urg:'media',diario:true},
+    {id:'com12',name:'Vegetación de jardín podada y en buen estado',ref:'LIMPIEZA',pts:2,urg:'baja',diario:false},
+    {id:'com13',name:'Iluminación del jardín/terraza funcionando',ref:'CONDICION',pts:3,urg:'media',diario:true},
+    {id:'com14',name:'Señalética y menús en buen estado (sin roturas ni suciedad)',ref:'BRAND',pts:2,urg:'media',diario:false},
+  ]},
+  {id:'terraza_suites',icon:'🏢',title:'Terraza Suites / Edificio Adicional',sub:'Cleanliness + Condition · Áreas exclusivas y otros edificios',items:[
+    {id:'ts1',name:'Acceso/escaleras limpios y bien iluminados',ref:'LIMPIEZA',pts:3,urg:'alta',diario:true},
+    {id:'ts2',name:'Terraza de suites limpia (piso, muebles)',ref:'LIMPIEZA',pts:3,urg:'alta',diario:true},
+    {id:'ts3',name:'Mobiliario de terraza suites en buen estado',ref:'CONDICION',pts:3,urg:'media',diario:false},
+    {id:'ts5',name:'Iluminación de terraza y áreas comunes del edificio',ref:'CONDICION',pts:3,urg:'alta',diario:true},
+    {id:'ts6',name:'Pasillos del edificio adicional limpios',ref:'LIMPIEZA',pts:2,urg:'media',diario:true},
+    {id:'ts7',name:'Señalética del edificio en buen estado',ref:'BRAND',pts:2,urg:'media',diario:false},
+    {id:'ts8',name:'Área sin residuos ni agua estancada',ref:'LIMPIEZA',pts:2,urg:'media',diario:true},
+  ]},
+  {id:'pasillos',icon:'🚪',title:'Pasillos y Escaleras',sub:'Cleanliness + Condition · Circulaciones',items:[
+    {id:'p1',name:'Pasillos limpios: piso, paredes, techo',ref:'LIMPIEZA',pts:3,urg:'alta',diario:true},
+    {id:'p2',name:'Iluminación de pasillos funcionando (todos los focos)',ref:'CONDICION',pts:4,urg:'alta',diario:true},
+    {id:'p3',name:'Pintura de pasillos en buen estado',ref:'CONDICION',pts:3,urg:'media',diario:false},
+    {id:'p4',name:'Muebles/decoración de pasillo limpios y en buen estado',ref:'LIMPIEZA',pts:2,urg:'media',diario:true},
+    {id:'p5',name:'Elevadores limpios interior y exterior',ref:'LIMPIEZA',pts:3,urg:'alta',diario:true},
+    {id:'p6',name:'Elevadores funcionando correctamente',ref:'CONDICION',pts:5,urg:'critica',diario:true},
+    {id:'p7',name:'Máquina de hielo limpia y funcionando',ref:'LIMPIEZA',pts:2,urg:'media',diario:true},
+    {id:'p8',name:'Escaleras limpias y con iluminación adecuada',ref:'LIMPIEZA',pts:2,urg:'media',diario:true},
+    {id:'p9',name:'Señalética de emergencia/evacuación en buen estado',ref:'CONDICION',pts:3,urg:'alta',diario:false},
+  ]},
+  {id:'alberca',icon:'🏊',title:'Alberca',sub:'Cleanliness + Brand Standards · Amenidad clave',items:[
+    {id:'al1',name:'Toallas de alberca disponibles en recepción (waiver)',ref:'R&R 110.2',pts:2,urg:'alta',diario:true},
+    {id:'al2',name:'Contenedores de basura en buen estado y limpios',ref:'R&R 110.2',pts:2,urg:'alta',diario:true},
+    {id:'al3',name:'Área de alberca limpia: deck, bordes, agua',ref:'LIMPIEZA',pts:4,urg:'alta',diario:true},
+    {id:'al4',name:'Agua clara (sin algas ni turbidez)',ref:'LIMPIEZA',pts:5,urg:'critica',diario:true},
+    {id:'al5',name:'Camastros limpios y en buen estado',ref:'CONDICION',pts:2,urg:'media',diario:true},
+    {id:'al6',name:'Iluminación de alberca funcionando',ref:'CONDICION',pts:3,urg:'media',diario:true},
+    {id:'al7',name:'Baños de alberca limpios y abastecidos',ref:'LIMPIEZA',pts:4,urg:'alta',diario:true},
+    {id:'al8',name:'Reglamento y señalización de seguridad (profundidad, no clavados)',ref:'BRAND',pts:2,urg:'alta',diario:false},
+    {id:'al9',name:'Equipo de salvavidas visible y en buen estado',ref:'BRAND',pts:3,urg:'alta',diario:true},
+  ]},
+  {id:'gimnasio',icon:'🏋️',title:'Gimnasio',sub:'Cleanliness + Condition · Amenidades',items:[
+    {id:'g1',name:'Área limpia: piso, espejos y equipos',ref:'LIMPIEZA',pts:3,urg:'alta',diario:true},
+    {id:'g2',name:'Equipos completos y funcionando (caminadoras, bicicleta, pesas)',ref:'CONDICION',pts:4,urg:'alta',diario:true},
+    {id:'g3',name:'Mancuernas y accesorios ordenados',ref:'LIMPIEZA',pts:2,urg:'media',diario:false},
+    {id:'g4',name:'Bote de basura limpio y en buen estado',ref:'LIMPIEZA',pts:2,urg:'media',diario:false},
+    {id:'g5',name:'Iluminación y ventilación/A/C funcionando',ref:'CONDICION',pts:3,urg:'alta',diario:false},
+    {id:'g6',name:'Reglamento visible',ref:'BRAND',pts:2,urg:'media',diario:false},
+    {id:'g7',name:'Toallas y dispensador de agua o desinfectante disponibles',ref:'BRAND',pts:2,urg:'media',diario:false},
+    {id:'g8',name:'Puerta y acceso en buen estado',ref:'CONDICION',pts:2,urg:'media',diario:false},
+  ]},
+  {id:'desayuno',icon:'🍳',title:'Desayuno — Brand Standards',sub:'33.3% del componente Brand Standards · Punto crítico QAR',diarioExclude:true,items:[
+    {id:'d1',name:'Waffles calientes de Golden Waffles disponibles',ref:'R&R 200.3',pts:10,urg:'critica',diario:true},
+    {id:'d2',name:'Sabores de waffle disponibles (mínimo 2)',ref:'R&R 200.3',pts:5,urg:'alta',diario:true},
+    {id:'d3',name:'Platillo de huevo disponible',ref:'BRAND',pts:10,urg:'alta',diario:true},
+    {id:'d4',name:'Platillo guisado disponible',ref:'BRAND',pts:10,urg:'alta',diario:true},
+    {id:'d5',name:'Pan dulce / pastelería disponible',ref:'BRAND',pts:5,urg:'media',diario:true},
+    {id:'d6',name:'Pan de caja e integral disponible',ref:'BRAND',pts:5,urg:'media',diario:true},
+    {id:'d7',name:'Jugos (mínimo 3 tipos)',ref:'BRAND',pts:5,urg:'alta',diario:true},
+    {id:'d8',name:'Jugo de naranja disponible',ref:'BRAND',pts:5,urg:'alta',diario:true},
+    {id:'d9',name:'Fruta fresca disponible',ref:'BRAND',pts:5,urg:'media',diario:true},
+    {id:'d10',name:'Yogurt disponible',ref:'BRAND',pts:5,urg:'media',diario:true},
+    {id:'d11',name:'Cereales (mínimo 2 tipos)',ref:'BRAND',pts:5,urg:'media',diario:true},
+    {id:'d12',name:'Leche disponible (2 tipos al menos: entera/light/deslactosada)',ref:'BRAND',pts:5,urg:'media',diario:true},
+    {id:'d13',name:'Café regular/descafeinado caliente disponible y complementos',ref:'BRAND',pts:5,urg:'alta',diario:true},
+    {id:'d14',name:'Té caliente disponible',ref:'BRAND',pts:5,urg:'media',diario:true},
+    {id:'d15',name:'Agua fría y caliente disponible',ref:'BRAND',pts:2,urg:'media',diario:true},
+    {id:'d16',name:'Maple syrup y condimentos completos',ref:'BRAND',pts:2,urg:'media',diario:false},
+    {id:'d17',name:'Breakfast Ambassador presente con uniforme aprobado',ref:'R&R 200.3',pts:5,urg:'alta',diario:true},
+    {id:'d18',name:'Área de desayuno limpia (mesas, sillas, buffet)',ref:'LIMPIEZA',pts:5,urg:'alta',diario:true},
+    {id:'d19',name:'Platos, cubiertos y utensilios limpios y suficientes',ref:'LIMPIEZA',pts:3,urg:'alta',diario:true},
+  ]},
+  {id:'hab_bs',icon:'🛏️',title:'Habitación — Brand Standards',sub:'33.3% del componente Brand Standards · Estándares Choice',items:[
+    {id:'hb1',name:'Protector de colchón con etiqueta ALSIM CALA',ref:'R&R 520.01',pts:5,urg:'alta',diario:false},
+    {id:'hb2',name:'Almohadas tipo correcto con logo ALSIM CALA',ref:'R&R 520.01',pts:5,urg:'alta',diario:false},
+    {id:'hb3',name:'Cobija con etiqueta de marca',ref:'R&R 520.01',pts:5,urg:'alta',diario:false},
+    {id:'hb4',name:'Sábanas / funda de almohada',ref:'R&R 520.01',pts:5,urg:'alta',diario:false},
+    {id:'hb5',name:'Cafetera de taza individual (no de 4 tazas)',ref:'R&R 150.2',pts:5,urg:'alta',diario:false},
+    {id:'hb6',name:'Kit de café completo: café, descafeinado, té, azúcar',ref:'R&R 150.2',pts:2,urg:'media',diario:false},
+    {id:'hb7',name:'Accesorios de café en bandeja separada (no en charola)',ref:'R&R 150.2',pts:2,urg:'media',diario:false},
+    {id:'hb8',name:'Servilletas y bolsa de lavandería aprobada',ref:'R&R 150.2',pts:2,urg:'media',diario:false},
+    {id:'hb9',name:'Luz nocturna (nightlight) instalada y funcionando',ref:'R&R 150.3',pts:1,urg:'media',diario:false},
+    {id:'hb10',name:'Papelería de habitación completa: tarjeta No molestar, tarjeta camaristas, hoja de lavandería, libreta y pluma',ref:'R&R',pts:2,urg:'media',diario:false},
+    {id:'hb11',name:'Reglamento en caja de seguridad / ganchos completos',ref:'BRAND',pts:1,urg:'baja',diario:false},
+  ]},
+  {id:'hab_limp',icon:'🧹',title:'Habitación — Limpieza',sub:'35% del componente Cleanliness · Criterio principal',items:[
+    {id:'hl1',name:'Piso limpio (sin polvo, cabellos, manchas)',ref:'LIMPIEZA',pts:4,urg:'alta',diario:true},
+    {id:'hl2',name:'Paredes limpias y sin manchas',ref:'LIMPIEZA',pts:3,urg:'media',diario:true},
+    {id:'hl3',name:'Techo limpio sin polvo ni suciedad',ref:'LIMPIEZA',pts:2,urg:'media',diario:false},
+    {id:'hl4',name:'Ventanas limpias (sin huellas)',ref:'LIMPIEZA',pts:3,urg:'media',diario:false},
+    {id:'hl5',name:'Filtros de aire acondicionado limpios',ref:'LIMPIEZA',pts:3,urg:'alta',diario:false},
+    {id:'hl6',name:'Cortinas limpias y sin manchas',ref:'LIMPIEZA',pts:2,urg:'media',diario:false},
+    {id:'hl7',name:'Charola, cafetera y tazas limpias',ref:'LIMPIEZA',pts:2,urg:'media',diario:false},
+    {id:'hl8',name:'Cajonera y buró limpios (interior y exterior)',ref:'LIMPIEZA',pts:2,urg:'media',diario:false},
+    {id:'hl9',name:'Teléfono limpio (incluye carátula)',ref:'LIMPIEZA',pts:2,urg:'media',diario:false},
+    {id:'hl10',name:'Cabeceras limpias',ref:'LIMPIEZA',pts:3,urg:'media',diario:false},
+    {id:'hl11',name:'Camas tendidas y fajadas correctamente',ref:'LIMPIEZA',pts:5,urg:'alta',diario:true},
+    {id:'hl12',name:'Sábanas y almohadas limpias y en buen estado',ref:'LIMPIEZA',pts:5,urg:'alta',diario:false},
+    {id:'hl13',name:'Burro de planchar y plancha limpios',ref:'LIMPIEZA',pts:3,urg:'media',diario:false},
+    {id:'hl14',name:'Caja de seguridad limpia',ref:'LIMPIEZA',pts:1,urg:'baja',diario:false},
+  ]},
+  {id:'bano',icon:'🚿',title:'Baño — Limpieza y Condición',sub:'35% Cleanliness + 25% Condition · Mayor impacto QAR',items:[
+    {id:'ba1',name:'Lavabo limpio y sin sarro',ref:'LIMPIEZA',pts:4,urg:'alta',diario:true},
+    {id:'ba2',name:'Llaves y manerales sin oxidación',ref:'CONDICION',pts:6,urg:'alta',diario:false},
+    {id:'ba3',name:'Espejo principal limpio (sin huellas)',ref:'LIMPIEZA',pts:3,urg:'alta',diario:true},
+    {id:'ba4',name:'Espejo de vanity limpio por ambos lados',ref:'LIMPIEZA',pts:2,urg:'media',diario:false},
+    {id:'ba5',name:'Hielera completa con bolsa y limpia',ref:'LIMPIEZA',pts:2,urg:'media',diario:false},
+    {id:'ba6',name:'Iluminación de vanity adecuada y funcionando',ref:'CONDICION',pts:3,urg:'media',diario:false},
+    {id:'ba7',name:'Toallas limpias y en buen estado',ref:'LIMPIEZA',pts:5,urg:'alta',diario:true},
+    {id:'ba8',name:'Taza WC limpia y sin sarro/bordo',ref:'LIMPIEZA',pts:5,urg:'alta',diario:true},
+    {id:'ba9',name:'Asiento de WC limpio y en buen estado',ref:'LIMPIEZA',pts:3,urg:'alta',diario:true},
+    {id:'ba10',name:'Regadera limpia, sin cabellos y "lecherada"',ref:'LIMPIEZA',pts:4,urg:'alta',diario:false},
+    {id:'ba11',name:'Cancel/cortina de regadera limpia y sin moho',ref:'CONDICION',pts:4,urg:'alta',diario:false},
+    {id:'ba12',name:'Techo de baño limpio y SIN HONGO',ref:'CONDICION',pts:6,urg:'critica',diario:true},
+    {id:'ba13',name:'Cebolletas en buen estado sin filtraciones',ref:'CONDICION',pts:6,urg:'alta',diario:false},
+    {id:'ba14',name:'Puerta/marco de baño sin oxidación',ref:'CONDICION',pts:6,urg:'alta',diario:false},
+    {id:'ba15',name:'Accesorios completos y papel con cortesía (doblado)',ref:'BRAND',pts:2,urg:'media',diario:false},
+    {id:'ba16',name:'Secadora desenchufada y sin cabellos',ref:'LIMPIEZA',pts:3,urg:'media',diario:false},
+  ]},
+  {id:'hab_cond',icon:'🔧',title:'Habitación — Condición',sub:'Área de mayor debilidad histórica · Revisión QAR',items:[
+    {id:'hc1',name:'Paredes sin grietas, descascarado ni humedad',ref:'CONDICION',pts:6,urg:'alta',diario:false},
+    {id:'hc2',name:'Piso en buen estado (sin baldosas rotas)',ref:'CONDICION',pts:4,urg:'media',diario:false},
+    {id:'hc3',name:'Techo en buen estado (sin goteras)',ref:'CONDICION',pts:4,urg:'alta',diario:false},
+    {id:'hc4',name:'Ventana sellada (sin filtración de aire/agua)',ref:'CONDICION',pts:3,urg:'media',diario:false},
+    {id:'hc5',name:'Aire acondicionado funcionando correctamente',ref:'CONDICION',pts:5,urg:'alta',diario:true},
+    {id:'hc6',name:'Cortinas sin desgarros ni costuras abiertas',ref:'CONDICION',pts:2,urg:'media',diario:false},
+    {id:'hc7',name:'Lámparas funcionando',ref:'CONDICION',pts:2,urg:'media',diario:true},
+    {id:'hc8',name:'Burro de planchar en buen estado (sin oxidación)',ref:'CONDICION',pts:3,urg:'media',diario:false},
+    {id:'hc9',name:'Planta del A/C en buen estado (sin goteras)',ref:'CONDICION',pts:3,urg:'alta',diario:false},
+    {id:'hc10',name:'Puerta principal en buen estado con cierre correcto',ref:'CONDICION',pts:3,urg:'alta',diario:false},
+    {id:'hc11',name:'Marco de puerta principal sin oxidación/deterioro',ref:'CONDICION',pts:4,urg:'alta',diario:false},
+    {id:'hc12',name:'TV limpia, enciende, programación y control OK',ref:'CONDICION',pts:3,urg:'alta',diario:true},
+  ]},
+  {id:'huespedes',icon:'🤝',title:'Interacción con Huéspedes',sub:'Experiencia y satisfacción · Guardia Diaria',diario:true,items:[
+    {id:'hue1',name:'Saludo cordial y por nombre al huésped al contacto',ref:'BRAND',pts:5,urg:'alta',diario:true},
+    {id:'hue2',name:'Personal ofrece asistencia proactiva (sin esperar que el huésped pida)',ref:'BRAND',pts:5,urg:'alta',diario:true},
+    {id:'hue3',name:'Se consulta satisfacción a huéspedes en áreas comunes',ref:'BRAND',pts:4,urg:'media',diario:true},
+    {id:'hue4',name:'Quejas o solicitudes atendidas en menos de 15 min',ref:'BRAND',pts:5,urg:'alta',diario:true},
+    {id:'hue5',name:'Experiencia positiva compartida por huésped (descripción):',ref:'EXPERIENCIA',pts:0,urg:'baja',diario:true,esNota:true},
+    {id:'hue6',name:'Oportunidad de mejora identificada en interacción (descripción):',ref:'EXPERIENCIA',pts:0,urg:'baja',diario:true,esNota:true},
+  ]},
+  {id:'lavanderia',icon:'🧺',title:'Lavandería, Roperías y Bodegas',sub:'Cleanliness + Condition · Soporte operativo',items:[
+    {id:'lv1',name:'Lavadoras y secadoras limpias y funcionando',ref:'LIMPIEZA',pts:3,urg:'alta',diario:false},
+    {id:'lv2',name:'Área general limpia y sin residuos',ref:'LIMPIEZA',pts:2,urg:'media',diario:false},
+    {id:'lv3',name:'Suministros de lavandería abastecidos',ref:'BRAND',pts:2,urg:'media',diario:false},
+    {id:'lv4',name:'Carrito de camarista completo y limpio',ref:'LIMPIEZA',pts:2,urg:'media',diario:true},
+    {id:'lv5',name:'Inventario de ropa de cama suficiente',ref:'BRAND',pts:3,urg:'alta',diario:false},
+    {id:'lv6',name:'Sin mezcla de ropa sucia/limpia',ref:'LIMPIEZA',pts:2,urg:'media',diario:false},
+    {id:'lv7',name:'Bodega de mantenimiento ordenada y limpia, con herramientas y refacciones identificadas',ref:'LIMPIEZA',pts:2,urg:'media',diario:false},
+    {id:'lv8',name:'Bodega de mantenimiento con productos químicos bajo control',ref:'BRAND',pts:2,urg:'alta',diario:false},
+    {id:'lv9',name:'Roperías de pisos ordenadas y con inventario de blancos completo',ref:'BRAND',pts:3,urg:'alta',diario:false},
+    {id:'lv10',name:'Roperías de pisos limpias, sin ropa sucia mezclada',ref:'LIMPIEZA',pts:2,urg:'media',diario:false},
+  ]},
+];
+
+const BONUS = [
+  {label:'Bono completo (100%)',min:90,g:'100%',j:'100%',cls:'sc-high'},
+  {label:'Bono parcial (70%)',min:80,g:'70%',j:'70%',cls:'sc-mid'},
+  {label:'Bono reducido (40%)',min:70,g:'40%',j:'40%',cls:'sc-mid'},
+  {label:'Sin bono',min:0,g:'0%',j:'0%',cls:'sc-low'},
+];
+
+// ══════════════════════════════════════════════════════════
+//  STORAGE — INSPECCIONES
+// ══════════════════════════════════════════════════════════
+const HAB_SECTION_IDS = ['hab_bs','hab_limp','bano','hab_cond'];
+
+// ══ Capa de servidor (Supabase vía /api) ══
+const TOKEN_KEY='qar_token_v1';
+let token=null; try{token=localStorage.getItem(TOKEN_KEY);}catch(e){}
+let store={inspections:[]};
+let saveTimer=null, saveInflight=false, savePending=false;
+
+// Compatibilidad: descarga de archivos en el navegador
+const claude={use:async(n)=>n==='downloads'?{save:async({filename,data})=>{
+  const blob=data instanceof Blob?data:new Blob([data]);
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;
+  document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);
+}}:null};
+
+async function api(path,opts={}){
+  const r=await fetch('/api/'+path,{method:opts.method||'GET',
+    headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},
+    body:opts.body?JSON.stringify(opts.body):undefined});
+  let j={};try{j=await r.json();}catch(e){}
+  if(r.status===401&&path!=='login'){doLogout();throw Object.assign(new Error('Sesión expirada. Vuelve a entrar.'),{status:401});}
+  if(!r.ok)throw Object.assign(new Error(j.error||('Error '+r.status)),{status:r.status});
+  return j;
+}
+function rowToIns(r){
+  const d=r.data||{};
+  return {...d,id:r.id,propiedad:r.propiedad,modo:r.tipo==='qar'?'completo':'diario',fecha:r.fecha,
+    inspector:r.supervisor||d.inspector||'',estado:r.estado,closed:r.estado!=='borrador',
+    published:r.estado==='publicada',score:r.score,bcUrl:r.bc_url,userEmail:r.user_email};
+}
+function insToBody(i){
+  const {estado,closed,published,bcUrl,userEmail,score,publishError,...data}=i;
+  return {propiedad:i.propiedad,tipo:i.modo==='completo'?'qar':'diaria',fecha:i.fecha,supervisor:i.inspector,data,score:calcScore(i).overall};
+}
+async function loadFromServer(){
+  const j=await api('inspections');
+  store.inspections=(j.inspections||[]).map(rowToIns);
+}
+function setSaveState(st,msg){
+  document.querySelectorAll('.save-ind').forEach(el=>{
+    el.textContent=st==='saved'?'✓ Guardado':st==='saving'?'Guardando…':st==='pending'?'Cambios sin guardar…':st==='error'?'⚠ Sin conexión — reintentando':'';
+    el.style.color=st==='error'?'var(--danger)':'var(--fg-muted)';
+    if(msg)el.title=msg;
+  });
+}
+function saveCur(){
+  if(!cur||cur.closed)return;
+  const idx=store.inspections.findIndex(i=>i.id===cur.id);
+  if(idx>=0)store.inspections[idx]=cur; else store.inspections.unshift(cur);
+  setSaveState('pending');
+  clearTimeout(saveTimer); saveTimer=setTimeout(flushSave,900);
+}
+async function flushSave(){
+  clearTimeout(saveTimer);
+  if(!cur||cur.closed)return true;
+  if(saveInflight){savePending=true;return false;}
+  saveInflight=true; let ok=false; const snap=cur;
+  try{
+    setSaveState('saving');
+    await api('inspections?id='+snap.id,{method:'PUT',body:insToBody(snap)});
+    setSaveState('saved'); ok=true;
+  }catch(e){
+    setSaveState('error',e.message);
+    if(e.status===409||e.status===403){showToast(e.message);}
+    else{clearTimeout(saveTimer);saveTimer=setTimeout(flushSave,5000);}
+  }
+  saveInflight=false;
+  if(savePending){savePending=false;saveTimer=setTimeout(flushSave,300);}
+  return ok;
+}
+async function waitSave(){
+  await flushSave();
+  for(let i=0;i<60&&(saveInflight||savePending);i++) await new Promise(r=>setTimeout(r,150));
+}
+window.addEventListener('beforeunload',e=>{ if(saveTimer&&cur&&!cur.closed&&document.getElementById('save-ind-main')?.textContent.includes('sin guardar')){e.preventDefault();e.returnValue='';} });
+
+// Current inspection being worked on
+let cur = null; // { id, propiedad, modo, inspector, repProp, fecha, ltrScore, ltrEncuestas, habs, currentHab, closed }
+// habs: [{id, num, responses:{}, notas:{}, fotos:{}}]
+
+function newInspection(propiedad, modo, inspector, repProp, fecha){
+  const id = Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+  const habId = 'h'+id;
+  const hab = {id:habId,num:'',responses:{},notas:{},fotos:{}};
+  return {id, propiedad, modo, inspector, repProp,
+    fecha: fecha||new Date().toISOString().slice(0,10),
+    ltrScore:'', ltrEncuestas:'',
+    habs:[hab], currentHab:habId, closed:false, estado:'borrador', needsFirstHab:true,
+    categorias:{}, published:false};
+}
+
+function getHab(){ return cur.habs.find(h=>h.id===cur.currentHab)||cur.habs[0]; }
+
+// General (non-room) sections use a dedicated storage object in cur
+function getGeneralStore(){
+  if(!cur.generalResponses) cur.generalResponses={};
+  if(!cur.generalNotas) cur.generalNotas={};
+  if(!cur.generalFotos) cur.generalFotos={};
+  return {responses:cur.generalResponses, notas:cur.generalNotas, fotos:cur.generalFotos};
+}
+function isHabSection(secId){ return HAB_SECTION_IDS.includes(secId); }
+
+// ══════════════════════════════════════════════════════════
+//  SCORE
+// ══════════════════════════════════════════════════════════
+function calcScore(inspection){
+  const esQar = inspection.modo!=='diario';
+  const ltr = esQar ? (parseFloat(inspection.ltrScore)||null) : null;
+  const ltrPct = ltr!==null ? Math.min(100,Math.round(ltr*10)) : null;
+  // Auto-fail
+  const genResponses = inspection.generalResponses || inspection.habs[0]?.responses || {};
+  const senalNo = genResponses['cf1']==='no';
+  const autoFail = esQar && senalNo;          // QAR completo: reprueba
+  const alertaSenal = !esQar && senalNo;      // Guardia Diaria: solo alerta urgente
+  // Aggregate scores: general sections use generalResponses; hab sections sum across all habs
+  let clPts=0,clMax=0,cndPts=0,cndMax=0,bsPts=0,bsMax=0;
+  const scoredSecs = SECTIONS.filter(s=>!['auto_fail','ltr'].includes(s.id));
+  const genR = inspection.generalResponses||{};
+  for(const sec of scoredSecs){
+    const isHab = HAB_SECTION_IDS.includes(sec.id);
+    for(const item of sec.items){
+      if(!item.pts||item.pts<=0)continue;
+      const bkt = getBucket(sec.id, item.ref||'');
+      if(isHab){
+        // Sum across all habs (each hab is an independent room inspection)
+        for(const h of inspection.habs){
+          const resp = h.responses[item.id];
+          if(resp==='na')continue;
+          if(bkt==='limp'){clMax+=item.pts;if(resp==='ok')clPts+=item.pts;}
+          else if(bkt==='cond'){cndMax+=item.pts;if(resp==='ok')cndPts+=item.pts;}
+          else{bsMax+=item.pts;if(resp==='ok')bsPts+=item.pts;}
+        }
+      } else {
+        // General sections: scored once using generalResponses
+        const resp = genR[item.id] || (inspection.habs[0]?.responses[item.id]);
+        if(resp==='na')continue;
+        if(bkt==='limp'){clMax+=item.pts;if(resp==='ok')clPts+=item.pts;}
+        else if(bkt==='cond'){cndMax+=item.pts;if(resp==='ok')cndPts+=item.pts;}
+        else{bsMax+=item.pts;if(resp==='ok')bsPts+=item.pts;}
+      }
+    }
+  }
+  const cl  = clMax >0?Math.round(clPts/clMax*100) :null;
+  const cnd = cndMax>0?Math.round(cndPts/cndMax*100):null;
+  const bs  = bsMax >0?Math.round(bsPts/bsMax*100) :null;
+  const comps = [ltrPct,cl,cnd,bs].filter(v=>v!==null);
+  const overall = comps.length>0 ? Math.round(comps.reduce((a,b)=>a+b,0)/comps.length):null;
+  return {overall,ltrPct,cl,cnd,bs,autoFail,alertaSenal};
+}
+
+function getBucket(secId, ref){
+  if(['desayuno','hab_bs'].includes(secId))return'bs';
+  if(secId==='hab_limp')return'limp';
+  if(secId==='hab_cond')return'cond';
+  if(secId==='bano'){return ref==='CONDICION'?'cond':'limp';}
+  if(['recepcion','comedor'].includes(secId)){
+    return(ref.startsWith('R&R')||ref==='BRAND')?'bs':'limp';
+  }
+  if(ref==='CONDICION')return'cond';
+  if(ref.startsWith('R&R')||ref==='BRAND')return'bs';
+  return'limp';
+}
+
+function getBonus(pct){
+  if(pct===null)return null;
+  return BONUS.find(b=>pct>=b.min)||BONUS[BONUS.length-1];
+}
+
+// ══════════════════════════════════════════════════════════
+//  SCREEN MANAGER
+// ══════════════════════════════════════════════════════════
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ══════════════════════════════════════════════════════════
+//  HOME SCREEN
+// ══════════════════════════════════════════════════════════
+let selectedMode = 'completo';
+
+function renderHome(){
+  // Guardia de autenticación
+  if(!sesion){ showScreen('screen-login'); return; }
+
+  showScreen('screen-home');
+
+  // Header: nombre usuario y botón admin
+  const unEl = document.getElementById('home-username');
+  if(unEl) unEl.textContent = sesion.nombre;
+  const adminBtn = document.getElementById('btn-admin-home');
+  if(adminBtn) adminBtn.style.display = sesion.esAdmin ? 'inline-flex' : 'none';
+
+  // Auto-rellenar inspector
+  const inspEl = document.getElementById('hi-inspector');
+  if(inspEl && sesion.nombre){ inspEl.value = sesion.nombre; inspEl.readOnly = true; }
+
+  // Bloquear/filtrar selector de propiedad según hoteles asignados
+  const propSel = document.getElementById('hi-prop');
+  if(propSel){
+    const allowed = sesion.hoteles || [];
+    const hasAll  = allowed.includes('ALL') || sesion.esAdmin;
+    Array.from(propSel.options).forEach(opt=>{
+      opt.hidden = !hasAll && opt.value && !allowed.includes(opt.value);
+    });
+    // Si la opción actual no está permitida, seleccionar la primera disponible
+    if(!hasAll && propSel.value && !allowed.includes(propSel.value)){
+      const first = Array.from(propSel.options).find(o=>!o.hidden && o.value);
+      if(first) propSel.value = first.value;
+    }
+  }
+
+  // tipos de inspección permitidos
+  const tipos = sesion.esAdmin ? ['qar','diaria'] : (sesion.tipos||[]);
+  const allowMode = {completo:tipos.includes('qar'),diario:tipos.includes('diaria')};
+  document.querySelectorAll('.mode-card').forEach(c=>{ c.style.display=allowMode[c.dataset.mode]?'':'none'; });
+  if(!allowMode[selectedMode]) selectedMode = allowMode.completo?'completo':'diario';
+  document.getElementById('field-rep').style.display = selectedMode==='diario'?'none':'';
+  const noAccess = !allowMode.completo && !allowMode.diario;
+  const newCard = document.querySelector('.new-rev-card'); if(newCard) newCard.style.display = noAccess?'none':'';
+  // mode cards
+  document.querySelectorAll('.mode-card').forEach(c=>{
+    c.classList.toggle('sel', c.dataset.mode===selectedMode);
+  });
+  // history
+  const hl = document.getElementById('hist-list');
+  const open = store.inspections.filter(i=>!i.closed);
+  const closed = store.inspections.filter(i=>i.closed).slice(0,15);
+  let html='';
+  if(open.length){
+    html+=`<div class="hist-title">BORRADORES — TOCA PARA REANUDAR</div><div class="hist-list">`;
+    open.forEach(ins=>{ html+=histItem(ins,true); });
+    html+=`</div><div style="height:12px"></div>`;
+  }
+  if(closed.length){
+    html+=`<div class="hist-title">HISTORIAL</div><div class="hist-list">`;
+    closed.forEach(ins=>{ html+=histItem(ins,false); });
+    html+=`</div>`;
+  }
+  if(!open.length&&!closed.length){
+    html=`<div class="hist-empty">📋 Aún no hay inspecciones registradas.<br>Crea tu primera revisión arriba.</div>`;
+  }
+  hl.innerHTML=html;
+}
+
+function histItem(ins,isOpen){
+  const sc = calcScore(ins);
+  const pct = sc.overall;
+  const dot = pct===null?'#999':pct>=85?'#3D8A5B':pct>=70?'#D4A017':'#C0392B';
+  const scCls = pct===null?'':scoreClass(pct);
+  const prop = PROPIEDADES[ins.propiedad]?.nombre||ins.propiedad;
+  const modoTag = ins.modo==='completo'?'Inspección QAR':'Guardia Diaria';
+  const badge = ins.published ? `<span style="font-size:9px;background:#2e7d32;color:#fff;padding:1px 5px;border-radius:3px;margin-left:4px">✅ BC</span>`
+    : ins.closed ? `<span style="font-size:9px;background:#D4A017;color:#fff;padding:1px 5px;border-radius:3px;margin-left:4px">🔒 Cerrada · sin publicar</span>`
+    : `<span style="font-size:9px;background:#568294;color:#fff;padding:1px 5px;border-radius:3px;margin-left:4px">✏️ Borrador</span>`;
+  const autor = ins.userEmail && ins.userEmail!==(sesion&&sesion.email) ? ` · ${ins.inspector||ins.userEmail}` : '';
+  return `<div class="hist-item" onclick="openInspection('${ins.id}')">
+    <div class="hist-dot" style="background:${dot}"></div>
+    <div class="hi-info">
+      <div class="hi-prop">${prop}${badge}</div>
+      <div class="hi-sub">${ins.fecha} · ${modoTag}${autor}${ins.modo==='completo'||ins.habs.length>1?` · ${ins.habs.length} hab${ins.habs.length>1?'s':''}`:''}</div>
+    </div>
+    <div class="hi-score ${scCls}">${pct!==null?pct+'%':'—'}</div>
+    <div class="hi-actions" onclick="event.stopPropagation()">
+      ${sesion&&sesion.esAdmin?`<button class="btn btn-secondary btn-sm" onclick="exportInspection('${ins.id}')">JSON</button><button class="btn btn-danger btn-sm" onclick="deleteInspection('${ins.id}')">🗑️</button>`:''}
+    </div>
+  </div>`;
+}
+
+function resetInspectionUI(){
+  activeTab='checklist';
+  try{openSections.clear();}catch(e){}
+  ['meta-inspector','meta-rep','meta-fecha'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('sections-container').innerHTML='';
+}
+function startInspection(){
+  const prop = document.getElementById('hi-prop').value;
+  const inspector = document.getElementById('hi-inspector').value.trim();
+  const repPropEl = document.getElementById('hi-rep');
+  const repProp = selectedMode==='diario' ? '' : (repPropEl?.value.trim()||'');
+  const fecha = document.getElementById('hi-fecha').value;
+  if(!inspector){showToast('Ingresa el nombre del supervisor.');return;}
+  resetInspectionUI();
+  cur = newInspection(prop, selectedMode, inspector, repProp, fecha);
+  if(repPropEl) repPropEl.value='';
+  saveCur();
+  renderInspection();
+}
+
+function openInspection(id){
+  const ins = store.inspections.find(i=>i.id===id);
+  if(!ins)return;
+  resetInspectionUI();
+  cur = ins;
+  renderInspection();
+}
+
+async function salirInspeccion(){
+  if(cur&&!cur.closed){ showToast('Guardando borrador…'); await waitSave(); }
+  cur=null;
+  try{await loadFromServer();}catch(e){}
+  renderHome();
+}
+async function guardarBorrador(){
+  if(!cur||cur.closed)return;
+  await waitSave();
+  showToast('✅ Borrador guardado. Puedes reanudarlo desde Inicio.');
+}
+
+function deleteInspection(id){
+  if(!sesion||!sesion.esAdmin){showToast('Solo el administrador puede eliminar inspecciones.');return;}
+  showConfirm('¿Eliminar esta inspección? Quedará registrada en la bitácora.', async ()=>{
+    try{ await api('inspections?id='+id,{method:'DELETE'}); store.inspections=store.inspections.filter(i=>i.id!==id); renderHome(); }
+    catch(e){ showToast(e.message); }
+  });
+}
+
+async function exportInspection(id){
+  const ins = store.inspections.find(i=>i.id===id);
+  if(!ins)return;
+  const json = JSON.stringify(ins,null,2);
+  const filename = `QAR_${ins.propiedad}_${ins.fecha}.json`;
+  try{
+    const dl = await claude.use('downloads');
+    if(dl){
+      await dl.save({filename, data: new Blob([json],{type:'application/json'})});
+      return;
+    }
+  }catch(e){}
+  // fallback: copy to clipboard
+  try{
+    await navigator.clipboard.writeText(json);
+    showToast('JSON copiado al portapapeles (descarga no disponible en este entorno)');
+  }catch(e){
+    showToast('No se pudo descargar. Abre el reporte en el artifact viewer.');
+  }
+}
+
+function showConfirm(msg, onOk){
+  const bd = document.getElementById('modal-confirm');
+  document.getElementById('modal-confirm-msg').textContent = msg;
+  bd.classList.remove('hidden');
+  document.getElementById('modal-confirm-ok')._cb = onOk;
+}
+function _confirmOk(){
+  const cb = document.getElementById('modal-confirm-ok')._cb;
+  document.getElementById('modal-confirm').classList.add('hidden');
+  if(cb) cb();
+}
+function _confirmCancel(){
+  document.getElementById('modal-confirm').classList.add('hidden');
+}
+
+function showToast(msg){
+  let t = document.getElementById('app-toast');
+  if(!t){t=document.createElement('div');t.id='app-toast';
+    t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:9999;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center';
+    document.body.appendChild(t);}
+  t.textContent=msg;t.style.opacity='1';
+  clearTimeout(t._tid);t._tid=setTimeout(()=>t.style.opacity='0',3200);
+}
+
+// ══════════════════════════════════════════════════════════
+//  INSPECTION SCREEN
+// ══════════════════════════════════════════════════════════
+let activeTab = 'checklist'; // 'checklist'|'reporte'
+
+function renderInspection(){
+  if(!cur)return;
+  showScreen('screen-inspect');
+  updateSidebar();
+  if(activeTab==='checklist') renderChecklist();
+  else renderReport();
+}
+
+function getVisibleSections(){
+  return SECTIONS.filter(sec=>{
+    if(cur.modo!=='diario' && sec.id==='huespedes') return false; // Interacción con huéspedes: solo Guardia Diaria
+    if(cur.modo==='diario'){
+      // Exclude secciones no aplican en guardia diaria
+      if(['ltr','hab_bs','lavanderia'].includes(sec.id))return false;
+      if(sec.isLTR)return false;
+      if(sec.diarioExclude)return false; // marca explícita (desayuno)
+      return sec.items.some(i=>i.diario);
+    }
+    return true;
+  });
+}
+
+function getSectionItems(sec){
+  if(cur.modo==='diario') return sec.items.filter(i=>i.diario||sec.id==='huespedes');
+  return sec.items;
+}
+
+function updateBanners(sc){
+  const b=document.getElementById('banner-autofail');
+  if(!b)return;
+  if(cur.modo==='diario'){
+    b.hidden=!sc.alertaSenal;
+    b.innerHTML='🚨 ALERTA URGENTE — Señalización exterior no iluminada / en mal estado (R&R 600.1). Atender de inmediato. Se publicará como hallazgo crítico en Basecamp.';
+  }else{
+    b.hidden=!sc.autoFail;
+    b.innerHTML='⚡ FALLA AUTOMÁTICA — Señalización exterior no iluminada (R&R 600.1). QAR = REPROBADO.';
+  }
+}
+function secAnswered(sec){
+  const st=isHabSection(sec.id)?getHab():getGeneralStore();
+  const items=getSectionItems(sec).filter(i=>!i.esNota);
+  return {answered:items.filter(i=>st.responses[i.id]).length,total:items.length};
+}
+function updateSecProg(itemId){
+  const sec=SECTIONS.find(x=>x.items.some(i=>i.id===itemId));
+  if(!sec)return;
+  const el=document.querySelector('#sec-'+sec.id+' .sec-prog');
+  if(el){const p=secAnswered(sec);el.textContent=p.answered+'/'+p.total;}
+}
+function updateSidebar(){
+  const sc = calcScore(cur);
+  const pct = sc.overall;
+  const pctCls = pct!==null?scoreClass(pct):'';
+  // prop & mode
+  document.getElementById('sb-prop-name').textContent = PROPIEDADES[cur.propiedad]?.nombre||cur.propiedad;
+  document.getElementById('sb-mode-name').textContent = cur.modo==='completo'?'Inspección QAR':'Guardia Diaria';
+  // habs strip
+  let habH = cur.habs.map(h=>`<button class="hab-tab ${h.id===cur.currentHab?'active':''}" onclick="switchHab('${h.id}')">${h.num}</button>`).join('');
+  habH += `<button class="hab-tab-add" onclick="addHab()" title="Agregar habitación" style="padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:none;background:rgba(255,255,255,.15);color:rgba(255,255,255,.8)">+ Hab</button>`;
+  document.getElementById('sb-habs').innerHTML=habH;
+  // score
+  const scEl = document.getElementById('sb-score-big');
+  scEl.className = `sc-big ${pctCls}`;
+  scEl.textContent = pct!==null?pct+'%':'—';
+  // bars
+  const bars=[...(cur.modo==='diario'?[]:[{l:'LTR',v:sc.ltrPct}]),{l:'Limpieza',v:sc.cl},{l:'Condición',v:sc.cnd},{l:'Brand Std',v:sc.bs}];
+  document.getElementById('sb-bars').innerHTML=bars.map(b=>`
+    <div class="sc-bar-row">
+      <div class="sc-bar-lbl">${b.l}</div>
+      <div class="sc-bar-track"><div class="sc-bar-fill" style="width:${b.v??0}%"></div></div>
+      <div class="sc-bar-val">${b.v!==null?b.v+'%':'—'}</div>
+    </div>`).join('');
+  // nav
+  const secs = getVisibleSections();
+  const hab = getHab();
+  let navH='';
+  secs.forEach(sec=>{
+    if(sec.isLTR){
+      navH+=`<button class="nav-item" onclick="scrollToSec('sec-${sec.id}')">${sec.icon} ${sec.title}</button>`;
+      return;
+    }
+    const items = getSectionItems(sec);
+    const sr = isHabSection(sec.id) ? hab.responses : (cur.generalResponses||{});
+    const answered = items.filter(i=>sr[i.id]).length;
+    const noConf = items.filter(i=>sr[i.id]==='no').length;
+    const cls = noConf>0?'nav-danger':answered===items.length&&answered>0?'nav-ok':answered>0?'nav-warn':'';
+    navH+=`<button class="nav-item ${cls}" onclick="scrollToSec('sec-${sec.id}')">${sec.icon} ${sec.title}</button>`;
+  });
+  document.getElementById('sb-nav').innerHTML=navH;
+}
+
+function renderChecklist(){
+  activeTab='checklist';
+  document.querySelectorAll('.view-tab').forEach(t=>t.classList.toggle('active',t.dataset.tab==='checklist'));
+  document.getElementById('inspect-checklist').style.display='';
+  document.getElementById('inspect-report').style.display='none';
+  // Si la primera habitación no tiene número todavía, pedir uno
+  if(cur.needsFirstHab){
+    cur.needsFirstHab=false;
+    const modal = document.getElementById('modal-add-hab');
+    const inp = document.getElementById('modal-hab-num');
+    inp.value='';
+    window._firstHab=true;
+    modal.classList.remove('hidden');
+    setTimeout(()=>inp.focus(),100);
+  }
+  const sc = calcScore(cur);
+  updateBanners(sc);
+  document.getElementById('banner-closed').hidden = !cur.closed || !!cur.published;
+  const bPub = document.getElementById('banner-published');
+  if(bPub) bPub.hidden = !cur.published;
+  // meta
+  document.getElementById('meta-inspector').value = cur.inspector||'';
+  document.getElementById('meta-rep').value = cur.repProp||'';
+  document.getElementById('meta-fecha').value = cur.fecha||'';
+
+  // Render sections-container with two blocks
+  const secs = getVisibleSections();
+  const generalSecs = secs.filter(s=>!HAB_SECTION_IDS.includes(s.id));
+  const habSecs = secs.filter(s=>HAB_SECTION_IDS.includes(s.id));
+  const hab = getHab();
+
+  let generalHtml='';
+  for(const sec of generalSecs) generalHtml += renderSection(sec, hab);
+
+  document.getElementById('sections-container').innerHTML =
+    `<div id="general-sections">${generalHtml}</div>` +
+    (habSecs.length>0 ? `
+      <div class="hab-section-divider">
+        <div class="hab-div-line"></div>
+        <span class="hab-div-label">🛏️ SECCIONES DE HABITACIÓN</span>
+        <div class="hab-div-line"></div>
+      </div>
+      <div class="hab-section-nav">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--fg-muted);margin-bottom:5px">Habitación activa</div>
+        <div class="hab-nav-bar" id="main-habs"></div>
+      </div>
+      <div id="hab-sections"></div>
+    ` : '');
+
+  _renderHabSectionsOnly();
+
+  // restore open states
+  for(const sec of secs){
+    const el = document.getElementById('sec-'+sec.id);
+    if(el&&openSections.has(sec.id)){el.classList.add('open');}
+  }
+}
+
+function _renderHabSectionsOnly(){
+  const secs = getVisibleSections().filter(s=>HAB_SECTION_IDS.includes(s.id));
+  const hab = getHab();
+  // hab nav pills
+  const habNav = document.getElementById('main-habs');
+  if(habNav){
+    let habH = cur.habs.map(h=>{
+      const isActive = h.id===cur.currentHab;
+      return `<div style="display:flex;align-items:center;gap:2px">
+        <button class="hab-pill ${isActive?'active':''}" onclick="switchHab('${h.id}')">${h.num}</button>
+        ${cur.habs.length>1&&isActive?`<button class="hab-delete-btn" onclick="removeHab('${h.id}')" title="Quitar habitación">✕</button>`:''}
+      </div>`;
+    }).join('');
+    habH += `<button class="hab-pill-add" onclick="addHab()" style="padding:5px 12px;font-size:12px">+ Agregar hab</button>`;
+    habNav.innerHTML=habH;
+  }
+  // hab section cards
+  const habSecEl = document.getElementById('hab-sections');
+  if(habSecEl){
+    let html='';
+    for(const sec of secs) html += renderSection(sec, hab);
+    habSecEl.innerHTML=html;
+    for(const sec of secs){
+      const el = document.getElementById('sec-'+sec.id);
+      if(el&&openSections.has(sec.id)){el.classList.add('open');}
+    }
+  }
+}
+
+const openSections = new Set(['auto_fail']);
+
+function renderSection(sec, hab){
+  // For general (non-room) sections use generalResponses storage; for hab sections use hab storage
+  const genMode = !isHabSection(sec.id);
+  const store = genMode ? getGeneralStore() : hab;
+  if(sec.isLTR){
+    return `<div class="sec-card" id="sec-${sec.id}">
+      <div class="sec-hdr" onclick="toggleSec('${sec.id}')">
+        <div class="sec-icon">${sec.icon}</div>
+        <div class="sec-title-grp"><div class="sec-title">${sec.title}</div><div class="sec-sub">${sec.sub}</div></div>
+        <svg class="chevron" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="ltr-panel">
+          <div class="ltr-grid">
+            <div>
+              <label style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--fg-muted);display:block;margin-bottom:3px">Score LTR (0–10)</label>
+              <input class="ltr-input" type="number" min="0" max="10" step=".01" value="${cur.ltrScore||''}" placeholder="ej. 8.74"
+                oninput="cur.ltrScore=this.value;saveCur();updateSidebar()">
+              <div class="ltr-pct">= ${cur.ltrScore?Math.round(parseFloat(cur.ltrScore)*10):'-'}% para el QAR</div>
+            </div>
+            <div>
+              <label style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--fg-muted);display:block;margin-bottom:3px">Núm. encuestas</label>
+              <input class="ltr-input" type="number" min="0" placeholder="ej. 42" value="${cur.ltrEncuestas||''}"
+                oninput="cur.ltrEncuestas=this.value;saveCur()">
+            </div>
+          </div>
+          <div class="ltr-refs">
+            <strong>Refs. recientes:</strong> MX056 Tampico: 8.74 · MX051 Monterrey: 8.22 · MX061 Pto. Vallarta: 9.01
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+  const items = getSectionItems(sec);
+  const _p = secAnswered(sec);
+  const answered = _p.answered;
+  const isCrit = sec.id==='auto_fail';
+  const genAttr = genMode?'data-gen="1"':'';
+  let rows='';
+  for(const item of items){
+    const resp = store.responses[item.id]||'';
+    const nota = store.notas[item.id]||'';
+    const fotos = store.fotos[item.id]||[];
+    const noConf = resp==='no';
+    const showExtra = noConf||nota||fotos.length>0;
+    const ptsLabel = item.pts>0?` · ${item.pts}pts`:'';
+    // foto thumbs
+    const thumbs = fotos.map((src,fi)=>`
+      <div class="foto-thumb">
+        <img src="${src}" onclick="openLightbox('${src}')">
+        <button class="del-foto" onclick="delFoto('${item.id}',${fi},${genMode?1:0})">×</button>
+      </div>`).join('');
+
+    if(item.esNota){
+      // Open text / experience field — no OK/NO toggle, just a textarea
+      rows+=`<tr id="row-${item.id}" ${genAttr}>
+        <td colspan="3">
+          <div class="el-name" style="margin-bottom:5px">${item.name}</div>
+          <textarea style="width:100%;border:1px solid var(--border);border-radius:var(--r);padding:7px 9px;font-family:var(--font-body);font-size:12px;background:var(--surface);color:var(--fg);resize:vertical;min-height:56px"
+            placeholder="Describe aquí la experiencia o comentario del huésped…"
+            oninput="setNota('${item.id}',this.value,${genMode?1:0})">${nota}</textarea>
+          <div class="foto-strip" id="fotos-${item.id}" style="margin-top:6px">
+            ${thumbs}
+            <div class="foto-add" title="Agregar foto">
+              📷
+              <input type="file" accept="image/*" capture="environment" multiple onchange="handleFotos('${item.id}',this,${genMode?1:0})">
+            </div>
+          </div>
+        </td>
+      </tr>`;
+      continue;
+    }
+
+    rows+=`<tr class="${noConf?'no-conf':''}" id="row-${item.id}" ${genAttr}>
+      <td><div class="el-name">${item.name}</div><span class="el-ref">${item.ref}${ptsLabel}</span></td>
+      <td style="white-space:nowrap"><span class="ub ${UC[item.urg]}">${UL[item.urg]}</span></td>
+      <td><div class="conf-ctrl">
+        <button class="conf-btn ${resp==='ok'?'sel-ok':''}" onclick="setResp('${item.id}','ok',${genMode?1:0})">✓ Sí</button>
+        <button class="conf-btn ${resp==='no'?'sel-no':''}" onclick="setResp('${item.id}','no',${genMode?1:0})">✗ No</button>
+        <button class="conf-btn ${resp==='na'?'sel-na':''}" onclick="setResp('${item.id}','na',${genMode?1:0})">N/A</button>
+      </div></td>
+    </tr>
+    <tr><td colspan="3" style="padding:0">
+      <div class="el-extra ${showExtra?'vis':''}" id="ex-${item.id}">
+        <textarea placeholder="Nota / observación…" rows="2"
+          oninput="setNota('${item.id}',this.value,${genMode?1:0})">${nota}</textarea>
+        <div>
+          <div class="foto-strip" id="fotos-${item.id}">
+            ${thumbs}
+            <div class="foto-add" title="Agregar foto">
+              📷
+              <input type="file" accept="image/*" capture="environment" multiple onchange="handleFotos('${item.id}',this,${genMode?1:0})">
+            </div>
+          </div>
+          <div style="font-size:9px;color:var(--fg-muted);margin-top:2px">${fotos.length>0?fotos.length+' foto(s)':''}</div>
+          <div style="margin-top:6px">
+            <div class="cat-label">Tipo de hallazgo</div>
+            <div class="cat-toggle">
+              <button class="cat-btn ${(cur.categorias||{})[item.id]==='mantenimiento'?'sel-mant':''}" onclick="setCat('${item.id}','mantenimiento',${genMode?1:0},${genMode?'null':`'${hab?hab.id:''}'`})">🔧 Mantenimiento</button>
+              <button class="cat-btn ${(cur.categorias||{})[item.id]==='limpieza'?'sel-limp':''}" onclick="setCat('${item.id}','limpieza',${genMode?1:0},${genMode?'null':`'${hab?hab.id:''}'`})">🧹 Limpieza</button>
+              <button class="cat-btn ${(cur.categorias||{})[item.id]==='ambos'?'sel-ambos':''}" onclick="setCat('${item.id}','ambos',${genMode?1:0},${genMode?'null':`'${hab?hab.id:''}'`})">🔧🧹 Ambos</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </td></tr>`;
+  }
+  return `<div class="sec-card" id="sec-${sec.id}">
+    <div class="sec-hdr" onclick="toggleSec('${sec.id}')">
+      <div class="sec-icon">${sec.icon}</div>
+      <div class="sec-title-grp">
+        <div class="sec-title">${sec.title}${isCrit?' <span style="background:#C0392B;color:#fff;font-size:9px;padding:1px 5px;border-radius:4px;font-family:var(--font-body);letter-spacing:.04em">AUTO-FAIL</span>':''}</div>
+        <div class="sec-sub">${sec.sub}</div>
+      </div>
+      <div class="sec-prog">${answered}/${_p.total}</div>
+      <svg class="chevron" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+    </div>
+    <div class="sec-body">
+      <table class="el-tbl"><thead><tr>
+        <th>Elemento</th><th style="width:90px">Urgencia</th><th style="width:130px">Conformidad</th>
+      </tr></thead><tbody>${rows}</tbody></table>
+    </div>
+  </div>`;
+}
+
+function toggleSec(id){
+  const el = document.getElementById('sec-'+id);
+  if(!el)return;
+  if(el.classList.contains('open')){el.classList.remove('open');openSections.delete(id);}
+  else{el.classList.add('open');openSections.add(id);}
+}
+function scrollToSec(id){
+  const el = document.getElementById(id);
+  if(!el)return;
+  if(!el.classList.contains('open')){el.classList.add('open');openSections.add(id.replace('sec-',''));}
+  el.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function _getItemStore(gen){ return gen ? getGeneralStore() : getHab(); }
+
+function setResp(itemId, val, gen){
+  if(cur&&cur.closed){showToast('🔒 Inspección cerrada — solo lectura.');return;}
+  const s = _getItemStore(gen);
+  s.responses[itemId]=val;
+  // Si deja de ser "No": se descartan nota, fotos y tipo de hallazgo, y se oculta el panel
+  if(val!=='no'){
+    s.notas[itemId]=''; s.fotos[itemId]=[];
+    if(cur.categorias) delete cur.categorias[itemId];
+    const ta=document.querySelector('#ex-'+itemId+' textarea'); if(ta) ta.value='';
+    document.querySelectorAll('#ex-'+itemId+' .cat-btn').forEach(b=>b.classList.remove('sel-mant','sel-limp','sel-ambos'));
+  }
+  saveCur();
+  const row = document.getElementById('row-'+itemId);
+  if(row){
+    row.className = (val==='no'?'no-conf':'');
+    if(gen) row.setAttribute('data-gen','1');
+    row.querySelectorAll('.conf-btn').forEach((b,i)=>{
+      b.className='conf-btn';
+      if(i===0&&val==='ok')b.classList.add('sel-ok');
+      if(i===1&&val==='no')b.classList.add('sel-no');
+      if(i===2&&val==='na')b.classList.add('sel-na');
+    });
+    const ex = document.getElementById('ex-'+itemId);
+    if(ex){ if(val==='no') ex.classList.add('vis'); else { refreshFotos(itemId, gen); ex.classList.remove('vis'); } }
+  }
+  updateSidebar();
+  updateBanners(calcScore(cur));
+  updateSecProg(itemId);
+}
+
+function setNota(itemId, val, gen){
+  if(cur&&cur.closed){return;}
+  const s = _getItemStore(gen);
+  s.notas[itemId]=val;
+  saveCur();
+}
+
+function setCat(itemId, val, gen, habId){
+  if(cur&&cur.closed){showToast('🔒 Inspección cerrada — solo lectura.');return;}
+  if(!cur.categorias) cur.categorias={};
+  // Toggle: click same button again = deselect
+  if(cur.categorias[itemId]===val) delete cur.categorias[itemId];
+  else cur.categorias[itemId]=val;
+  saveCur();
+  // Update buttons in DOM without full re-render
+  const extra = document.getElementById('ex-'+itemId);
+  if(extra){
+    extra.querySelectorAll('.cat-btn').forEach(btn=>{
+      btn.classList.remove('sel-mant','sel-limp');
+    });
+    const cat = cur.categorias[itemId];
+    if(cat){
+      const btns = extra.querySelectorAll('.cat-btn');
+      btns.forEach(btn=>{
+        if(cat==='mantenimiento'&&btn.textContent.includes('Mantenimiento')&&!btn.textContent.includes('Ambos'))btn.classList.add('sel-mant');
+        if(cat==='limpieza'&&btn.textContent.includes('Limpieza')&&!btn.textContent.includes('Ambos'))btn.classList.add('sel-limp');
+        if(cat==='ambos'&&btn.textContent.includes('Ambos'))btn.classList.add('sel-ambos');
+      });
+    }
+  }
+}
+
+function compressImage(file,max=1000,q=0.65){
+  return new Promise((ok,err)=>{
+    const fr=new FileReader();
+    fr.onload=()=>{const im=new Image();
+      im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height));
+        const c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);
+        c.getContext('2d').drawImage(im,0,0,c.width,c.height);ok(c.toDataURL('image/jpeg',q));};
+      im.onerror=err;im.src=fr.result;};
+    fr.onerror=err;fr.readAsDataURL(file);
+  });
+}
+async function handleFotos(itemId, input, gen){
+  if(cur&&cur.closed){showToast('🔒 Inspección cerrada — solo lectura.');input.value='';return;}
+  const files = Array.from(input.files);
+  const s = _getItemStore(gen);
+  if(!s.fotos[itemId])s.fotos[itemId]=[];
+  showToast('Subiendo foto…');
+  for(const file of files){
+    try{
+      const d=await compressImage(file);
+      const j=await api('foto',{method:'POST',body:{dataUrl:d,inspectionId:cur.id}});
+      s.fotos[itemId].push(j.url);
+    }catch(e){showToast('No se pudo subir la foto: '+e.message);}
+  }
+  input.value='';
+  saveCur();
+  refreshFotos(itemId, gen);
+}
+
+function refreshFotos(itemId, gen){
+  const s = _getItemStore(gen);
+  const fotos = s.fotos[itemId]||[];
+  const strip = document.getElementById('fotos-'+itemId);
+  if(!strip)return;
+  const thumbs = fotos.map((src,fi)=>`
+    <div class="foto-thumb">
+      <img src="${src}" onclick="openLightbox('${src}')">
+      <button class="del-foto" onclick="delFoto('${itemId}',${fi},${gen?1:0})">×</button>
+    </div>`).join('');
+  strip.innerHTML = thumbs+`<div class="foto-add" title="Agregar foto">
+    📷<input type="file" accept="image/*" capture="environment" multiple onchange="handleFotos('${itemId}',this,${gen?1:0})">
+  </div>`;
+  const ex = document.getElementById('ex-'+itemId);
+  if(ex) ex.classList.toggle('vis', fotos.length>0 || !!s.notas[itemId] || s.responses[itemId]==='no');
+}
+
+function delFoto(itemId, idx, gen){
+  const s = _getItemStore(gen);
+  if(!s.fotos[itemId])return;
+  s.fotos[itemId].splice(idx,1);
+  saveCur();
+  refreshFotos(itemId, gen);
+}
+
+// Habitaciones
+function addHab(){
+  const modal = document.getElementById('modal-add-hab');
+  const inp = document.getElementById('modal-hab-num');
+  inp.value='';
+  modal.classList.remove('hidden');
+  setTimeout(()=>inp.focus(),80);
+}
+function confirmAddHab(){
+  const inp = document.getElementById('modal-hab-num');
+  const num = (inp.value||'').trim();
+  if(!num){inp.style.borderColor='var(--danger)';inp.focus();return;}
+  inp.style.borderColor='';
+  document.getElementById('modal-add-hab').classList.add('hidden');
+  if(window._firstHab){
+    // Update first empty hab
+    window._firstHab=false;
+    cur.habs[0].num=num;
+    cur.currentHab=cur.habs[0].id;
+  } else {
+    const id='h'+Date.now().toString(36);
+    cur.habs.push({id,num,responses:{},notas:{},fotos:{}});
+    cur.currentHab=id;
+  }
+  saveCur();
+  _renderHabSectionsOnly();
+  updateSidebar();
+}
+
+function removeHab(habId){
+  if(cur.habs.length<=1){showToast('Debe quedar al menos una habitación.');return;}
+  const hab = cur.habs.find(h=>h.id===habId);
+  showConfirm(`¿Eliminar habitación ${hab?.num||''}? Se perderán todas sus respuestas y fotos.`, ()=>{
+    cur.habs=cur.habs.filter(h=>h.id!==habId);
+    cur.currentHab=cur.habs[0].id;
+    saveCur();
+    _renderHabSectionsOnly();
+    updateSidebar();
+  });
+}
+
+function switchHab(habId){
+  cur.currentHab=habId;
+  saveCur();
+  _renderHabSectionsOnly();
+  updateSidebar();
+}
+
+function switchTab(tab){
+  activeTab=tab;
+  document.querySelectorAll('.view-tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
+  document.getElementById('inspect-checklist').style.display=tab==='checklist'?'':'none';
+  document.getElementById('inspect-report').style.display=tab==='reporte'?'':'none';
+  if(tab==='reporte')renderReport();
+}
+
+function updateMeta(){
+  cur.inspector=document.getElementById('meta-inspector').value;
+  cur.repProp=document.getElementById('meta-rep').value;
+  cur.fecha=document.getElementById('meta-fecha').value;
+  saveCur();
+}
+
+// ── CLOSE INSPECTION ──
+function closeInspectionModal(){
+  if(cur&&cur.closed){showToast('🔒 La inspección ya está cerrada.');return;}
+  document.getElementById('modal-close').classList.remove('hidden');
+}
+async function confirmClose(){
+  document.getElementById('modal-close').classList.add('hidden');
+  showToast('Cerrando inspección…');
+  try{
+    await waitSave();
+    const body=insToBody(cur);
+    const j=await api('inspections?id='+cur.id+'&action=close',{method:'POST',body:{data:body.data,score:body.score}});
+    const upd=rowToIns(j.inspection); Object.assign(cur,upd);
+    const i=store.inspections.findIndex(x=>x.id===cur.id); if(i>=0) store.inspections[i]=cur;
+  }catch(e){ showToast('No se pudo cerrar: '+e.message); return; }
+  await publishToBasecamp(true);
+  await salirInspeccion();
+}
+async function reabrirInspeccion(){
+  if(!sesion||!sesion.esAdmin)return;
+  try{
+    const j=await api('inspections?id='+cur.id+'&action=reopen',{method:'POST',body:{}});
+    Object.assign(cur,rowToIns(j.inspection)); showToast('🔓 Inspección reabierta.'); renderInspection();
+  }catch(e){showToast(e.message);}
+}
+
+// ══════════════════════════════════════════════════════════
+//  REPORT
+// ══════════════════════════════════════════════════════════
+function renderReport(){
+  activeTab='reporte';
+  document.querySelectorAll('.view-tab').forEach(t=>t.classList.toggle('active',t.dataset.tab==='reporte'));
+  document.getElementById('inspect-checklist').style.display='none';
+  document.getElementById('inspect-report').style.display='';
+  const sc = calcScore(cur);
+  const pct = sc.overall;
+  const prop = PROPIEDADES[cur.propiedad]?.nombre||cur.propiedad;
+  const modoLabel = cur.modo==='completo'?'Inspección QAR':'Guardia Operativa Diaria';
+
+  // Score cards
+  const scCard = (lbl,val)=>{
+    const cls = val===null?'':scoreClass(val);
+    return `<div class="rsc"><div class="rsc-lbl">${lbl}</div><div class="rsc-val ${cls}">${val!==null?val+'%':'—'}</div></div>`;
+  };
+  let scoreHtml = `<div class="rep-score-grid">
+    ${scCard('Score General',sc.autoFail?null:pct)}
+    ${sc.autoFail?`<div class="rsc"><div class="rsc-lbl">Status</div><div class="rsc-val sc-low">FAIL</div></div>`:''}
+    ${cur.modo==='diario'?'':scCard('LTR',sc.ltrPct)}
+    ${scCard('Limpieza',sc.cl)}
+    ${scCard('Condición',sc.cnd)}
+    ${scCard('Brand Std',sc.bs)}
+  </div>`;
+
+  // Hab summary
+  let habSumHtml='';
+  if(cur.habs.length>1){
+    habSumHtml=`<div class="card"><div class="card-hdr"><h3>🛏️ Habitaciones revisadas</h3></div><div class="card-body">
+      ${cur.habs.map(h=>{
+        const noItems = SECTIONS.filter(s=>HAB_SECTION_IDS.includes(s.id))
+          .flatMap(s=>s.items).filter(i=>h.responses[i.id]==='no');
+        const cls = noItems.length===0?'sc-high':noItems.some(i=>i.urg==='critica')?'sc-low':'sc-mid';
+        return `<div class="hab-summary-row">
+          <div class="hab-num">Hab. ${h.num}</div>
+          <div class="hab-badges">${noItems.length===0?
+            '<span class="ub ub-b">✓ OK</span>':
+            noItems.slice(0,4).map(i=>`<span class="ub ${UC[i.urg]}">${UL[i.urg]}</span>`).join('')
+          }${noItems.length>4?`<span style="font-size:11px;color:var(--fg-muted)">+${noItems.length-4} más</span>`:''}</div>
+        </div>`;
+      }).join('')}
+    </div></div>`;
+  }
+
+  // Pendientes — secciones generales desde generalResponses, hab sections desde cada hab
+  const genR2 = cur.generalResponses||{};
+  const genN2 = cur.generalNotas||{};
+  const genF2 = cur.generalFotos||{};
+  const cats = cur.categorias||{};
+  const allPend = [];
+  for(const sec of SECTIONS){
+    if(sec.isLTR)continue;
+    const isHab = HAB_SECTION_IDS.includes(sec.id);
+    if(isHab){
+      for(const h of cur.habs){
+        for(const item of sec.items){
+          if(h.responses[item.id]==='no'){
+            allPend.push({...item, secTitle:sec.title, habNum:h.num, nota:h.notas[item.id]||'', fotos:h.fotos[item.id]||[], categoria:cats[item.id]||null});
+          }
+        }
+      }
+    } else {
+      for(const item of sec.items){
+        if(genR2[item.id]==='no'){
+          allPend.push({...item, secTitle:sec.title, habNum:'—', nota:genN2[item.id]||'', fotos:genF2[item.id]||[], categoria:cats[item.id]||null});
+        }
+      }
+    }
+  }
+  // Puntos no revisados (sin respuesta) — se muestran SOLO en el reporte en pantalla
+  const unrevMap = new Map();
+  const addUnrev = (secTitle, name, zona)=>{
+    if(!unrevMap.has(secTitle)) unrevMap.set(secTitle, []);
+    unrevMap.get(secTitle).push({name, zona});
+  };
+  for(const sec of SECTIONS){
+    if(sec.isLTR)continue;
+    const isHab = HAB_SECTION_IDS.includes(sec.id);
+    for(const item of sec.items){
+      if(item.esNota)continue;
+      if(isHab){
+        for(const h of cur.habs){
+          if(!h.responses[item.id]) addUnrev(sec.title, item.name, cur.habs.length>1?`Hab. ${h.num}`:'');
+        }
+      } else if(!genR2[item.id]){
+        addUnrev(sec.title, item.name, '');
+      }
+    }
+  }
+  const unrevTotal = [...unrevMap.values()].reduce((n,a)=>n+a.length,0);
+  const unrevHtml = unrevTotal===0 ? '' : `
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-hdr"><h3>🕘 Puntos no revisados (${unrevTotal})</h3>
+        <span style="font-size:11px;color:var(--fg-muted)">Sin respuesta · solo informativo, no se publican en Basecamp ni en el PDF</span>
+      </div>
+      <div class="card-body">
+        ${[...unrevMap.entries()].map(([title,list])=>`
+          <details style="margin-bottom:6px">
+            <summary style="cursor:pointer;font-size:12px;font-weight:600">${title} <span style="color:var(--fg-muted);font-weight:400">(${list.length})</span></summary>
+            <ul style="margin:6px 0 0 18px;padding:0;font-size:12px;color:var(--fg-muted)">
+              ${list.map(u=>`<li>${u.name}${u.zona?` <span style="font-size:10px">(${u.zona})</span>`:''}</li>`).join('')}
+            </ul>
+          </details>`).join('')}
+      </div>
+    </div>`;
+
+  allPend.sort((a,b)=>({critica:0,alta:1,media:2,baja:3}[a.urg]-{critica:0,alta:1,media:2,baja:3}[b.urg]));
+
+  const urgCount = u => allPend.filter(p=>p.urg===u).length;
+
+  const pendHtml = allPend.length===0
+    ? `<div class="empty-st"><div class="empty-icon">✅</div><h3>Sin pendientes</h3><p>Todos los ítems evaluados cumplen los estándares.</p></div>`
+    : `<ul class="pend-list">${allPend.map(p=>{
+        const catBadge = p.categoria==='mantenimiento'
+          ? `<span style="font-size:9px;background:#1a4f8a;color:#fff;padding:1px 6px;border-radius:4px;margin-left:5px">🔧 Mant.</span>`
+          : p.categoria==='limpieza'
+          ? `<span style="font-size:9px;background:#2e7d32;color:#fff;padding:1px 6px;border-radius:4px;margin-left:5px">🧹 Limp.</span>`
+          : p.categoria==='ambos'
+          ? `<span style="font-size:9px;background:linear-gradient(90deg,#1a4f8a 50%,#2e7d32 50%);color:#fff;padding:1px 6px;border-radius:4px;margin-left:5px">🔧🧹 Ambos</span>`
+          : `<span style="font-size:9px;background:var(--surface-2);color:var(--fg-muted);padding:1px 6px;border-radius:4px;margin-left:5px">Sin cat.</span>`;
+        return `
+        <li class="pend-item">
+          <div style="flex-shrink:0;padding-top:2px"><span class="ub ${UC[p.urg]}">${UL[p.urg]}</span></div>
+          <div style="flex:1;min-width:0">
+            <div>${p.name}${cur.habs.length>1?` <span style="font-size:10px;color:var(--fg-muted)">(Hab. ${p.habNum})</span>`:''}${catBadge}</div>
+            <div class="pend-area">${p.secTitle} · ${p.ref}</div>
+            ${p.nota?`<div class="pend-nota">"${p.nota}"</div>`:''}
+            ${p.fotos.length?`<div class="pend-fotos">${p.fotos.map(src=>`<img class="pend-foto-thumb" src="${src}" onclick="openLightbox('${src}')">`).join('')}</div>`:''}
+          </div>
+        </li>`;
+      }).join('')}</ul>`;
+
+  // Basecamp text
+  const catLabel = c => c==='mantenimiento'?'[MANT]':c==='limpieza'?'[LIMP]':c==='ambos'?'[MANT+LIMP]':'[?]';
+  const bcLines = allPend.map((p,i)=>
+    `${i+1}. [${UL[p.urg]}]${p.categoria?' '+catLabel(p.categoria):''}${cur.habs.length>1?' Hab.'+p.habNum:''} ${p.secTitle} › ${p.name}${p.nota?'\n   Nota: '+p.nota:''}`
+  ).join('\n');
+  const bcText = `=== PENDIENTES QAR — ${prop} ===
+Fecha: ${cur.fecha} | Supervisor: ${cur.inspector||'—'} | Score: ${pct!==null?pct+'%':'—'}
+Representante: ${cur.repProp||'—'} | Modo: ${modoLabel} | Habs. revisadas: ${cur.habs.length}
+
+${allPend.length===0?'✅ Sin pendientes registrados.':bcLines}
+
+RESUMEN: ${urgCount('critica')} CRÍTICAS · ${urgCount('alta')} ALTAS · ${urgCount('media')} MEDIAS · ${urgCount('baja')} BAJAS`;
+
+  document.getElementById('inspect-report').innerHTML=`
+    <div class="rep-hdr-card">
+      <div class="rep-title">Reporte QAR</div>
+      <div class="rep-sub">${prop} · ${cur.fecha} · ${modoLabel}</div>
+      <div style="margin-top:8px;font-size:11px;color:var(--gris-azul)">Supervisor: <strong style="color:#fff">${cur.inspector||'—'}</strong> · Rep. prop.: <strong style="color:#fff">${cur.repProp||'—'}</strong></div>
+    </div>
+    ${sc.alertaSenal?`<div class="banner-danger">🚨 ALERTA URGENTE — Señalización exterior no iluminada (R&R 600.1). Atender de inmediato.</div>`:''}${sc.autoFail?`<div class="banner-danger">⚡ FALLA AUTOMÁTICA — Señalización exterior no iluminada (R&R 600.1). QAR REPROBADO.</div>`:''}
+    ${scoreHtml}
+    ${habSumHtml}
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-hdr">
+        <h3>📋 Pendientes (${allPend.length})</h3>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          ${['critica','alta','media','baja'].map(u=>urgCount(u)>0?`<span class="ub ${UC[u]}">${urgCount(u)} ${UL[u]}</span>`:'').join('')}
+        </div>
+      </div>
+      <div class="card-body">${pendHtml}</div>
+    </div>
+    ${unrevHtml}
+    <div class="bc-panel">
+      <div class="bc-hdr"><span style="font-size:20px">🏕️</span><h3>Basecamp</h3></div>
+      <div class="bc-body">
+        <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:9px">
+          <button class="btn btn-terracota" onclick="generatePDF()" style="background:var(--terracota);color:#fff;border-color:var(--terracota)">📄 Descargar PDF</button>
+          ${cur.modo==='diario'?`<button class="btn" onclick="generateMinuta()" style="background:var(--pizarra);color:#fff;border-color:var(--pizarra)">📋 Descargar Minuta</button>`:''}
+          <button class="btn btn-secondary" onclick="exportInspection('${cur.id}')">💾 Descargar JSON</button>
+        </div>
+        ${(()=>{
+          const mantPend = allPend.filter(p=>p.categoria==='mantenimiento'||p.categoria==='ambos');
+          const limpPend = allPend.filter(p=>p.categoria==='limpieza'||p.categoria==='ambos');
+          const ambPend  = allPend.filter(p=>p.categoria==='ambos');
+          const sinCat   = allPend.filter(p=>!p.categoria);
+          const catSummary = allPend.length>0 ? `
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;font-size:11px">
+              ${mantPend.length>0?`<span style="background:#1a4f8a;color:#fff;padding:2px 8px;border-radius:4px">🔧 Mantenimiento: ${mantPend.length}</span>`:''}
+              ${limpPend.length>0?`<span style="background:#2e7d32;color:#fff;padding:2px 8px;border-radius:4px">🧹 Limpieza: ${limpPend.length}</span>`:''}
+              ${ambPend.length>0?`<span style="background:linear-gradient(90deg,#1a4f8a 50%,#2e7d32 50%);color:#fff;padding:2px 8px;border-radius:4px">🔧🧹 Ambos: ${ambPend.length}</span>`:''}
+              ${sinCat.length>0?`<span style="background:var(--surface-2);color:var(--fg-muted);padding:2px 8px;border-radius:4px">⚠️ Sin categoría: ${sinCat.length}</span>`:''}
+            </div>` : '';
+          if(cur.published){
+            return catSummary + `<div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;display:flex;align-items:center;gap:10px">
+              <span style="font-size:18px">✅</span>
+              <div><div style="font-weight:600;color:var(--ok);font-size:13px">Publicado en Basecamp</div>
+              <div style="font-size:11px;color:var(--fg-muted)">${cur.bcUrl?`<a href="${cur.bcUrl}" target="_blank" rel="noopener">Abrir tarjeta en Basecamp</a>`:'Sin hallazgos pendientes.'}</div></div>
+            </div>`;
+          } else if(cur.closed){
+            return catSummary + `<div style="background:var(--surface-2);border:1px dashed var(--warn);border-radius:var(--r);padding:10px 14px">
+              <div style="font-size:12px;color:var(--warn);margin-bottom:8px">🔒 Cerrada — pendiente de publicar en Basecamp.${cur.publishError?` <br><span style="color:var(--danger)">${cur.publishError}</span>`:''}</div>
+              <button class="btn btn-ok" style="width:100%;font-size:14px;padding:10px" onclick="publishToBasecamp(false)">🏕️ Reintentar publicación</button>
+              ${sesion&&sesion.esAdmin?`<button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="reabrirInspeccion()">🔓 Reabrir inspección (administrador)</button>`:''}
+            </div>`;
+          } else {
+            return catSummary + `<div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;text-align:center;color:var(--fg-muted);font-size:12px">
+              Al cerrar la inspección se publicará automáticamente en Basecamp (una tarjeta, una subtarea por cada “No”).
+            </div>`;
+          }
+        })()}
+      </div>
+    </div>
+    <div style="height:20px"></div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  PDF GENERATION
+// ══════════════════════════════════════════════════════════
+async function generatePDF(){
+  // jsPDF loaded from CDN as global window.jspdf.jsPDF
+  if(!window.jspdf){showToast('Cargando librería PDF…');return;}
+  const {jsPDF} = window.jspdf;
+  const sc = calcScore(cur);
+  const prop = PROPIEDADES[cur.propiedad]?.nombre||cur.propiedad;
+  const modoLabel = cur.modo==='completo'?'Inspección QAR':'Guardia Operativa Diaria';
+
+  const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'letter'});
+  const PW = 215.9; // letter width mm
+  const PH = 279.4;
+  const ML = 15, MR = 15, MT = 15;
+  let y = MT;
+  const CW = PW - ML - MR; // content width
+
+  // ─ helpers ─
+  function checkPage(needed=10){
+    if(y+needed > PH-15){doc.addPage();y=MT;}
+  }
+  function hline(yy){
+    doc.setDrawColor(200,200,200);
+    doc.line(ML, yy, PW-MR, yy);
+  }
+  function badge(text, type, xb, yb){
+    const colors={critica:[192,57,43],alta:[211,84,0],media:[243,156,18],baja:[39,174,96]};
+    const c = colors[type]||[100,100,100];
+    doc.setFillColor(...c);
+    const tw = doc.getTextWidth(text)+4;
+    doc.roundedRect(xb, yb-3.5, tw, 4.5, 1, 1, 'F');
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(7);
+    doc.text(text, xb+2, yb);
+    doc.setTextColor(40,40,40);
+    return tw+2;
+  }
+
+  // ─ PORTADA / HEADER ─
+  doc.setFillColor(84,89,89); // grafito
+  doc.rect(0,0,PW,38,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(20);
+  doc.text('REPORTE QAR', ML, 15);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(10);
+  doc.text(`${prop}`, ML, 22);
+  doc.setFontSize(8);
+  doc.setTextColor(142,159,163);
+  doc.text(`${modoLabel}  ·  ${cur.fecha}  ·  Supervisor: ${cur.inspector||'—'}  ·  Rep. propiedad: ${cur.repProp||'—'}`, ML, 28);
+  doc.text(`Habitaciones revisadas: ${cur.habs.length}  ·  Generado: ${new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'})}`, ML, 34);
+  doc.setTextColor(40,40,40);
+  y = 48;
+
+  // ─ AUTOFAIL banner ─
+  if(sc.autoFail){
+    doc.setFillColor(192,57,43);
+    doc.rect(ML,y,CW,8,'F');
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(9);
+    doc.setFont('helvetica','bold');
+    doc.text('!! FALLA AUTOMATICA - Senalizacion exterior no iluminada (R&R 600.1). QAR REPROBADO.', ML+2, y+5.5);
+    doc.setTextColor(40,40,40);
+    y+=11;
+  }
+
+  // ─ SCORE GRID ─
+  const scores=[
+    {l:'Score General', v: sc.autoFail?null:sc.overall},
+    ...(cur.modo==='diario'?[]:[{l:'LTR',v:sc.ltrPct}]),{l:'Limpieza',v:sc.cl},{l:'Condición',v:sc.cnd},{l:'Brand Std.',v:sc.bs}
+  ];
+  const cols = scores.length;
+  const cw = CW/cols;
+  scores.forEach((s,i)=>{
+    const x=ML+i*cw;
+    doc.setFillColor(255,255,255);
+    doc.setDrawColor(214,211,200);
+    doc.roundedRect(x+1,y,cw-2,18,2,2,'FD');
+    doc.setFontSize(7);
+    doc.setFont('helvetica','normal');
+    doc.setTextColor(102,107,107);
+    doc.text(s.l.toUpperCase(), x+cw/2, y+5, {align:'center'});
+    const val = s.v===null?(sc.autoFail?'FAIL':'—'):(s.v+'%');
+    const c = s.v===null?[192,57,43]:s.v>=80?[61,138,91]:s.v>=60?[212,160,23]:[192,57,43];
+    doc.setTextColor(...c);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(16);
+    doc.text(val, x+cw/2, y+14, {align:'center'});
+    doc.setTextColor(40,40,40);
+  });
+  y+=22;
+
+  // ─ HABITACIONES RESUMEN (si >1) ─
+  if(cur.habs.length>1){
+    checkPage(20);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(10);
+    doc.text('HABITACIONES REVISADAS', ML, y);
+    hline(y+1.5); y+=5;
+    for(const h of cur.habs){
+      checkPage(8);
+      const noItems = SECTIONS.filter(s=>HAB_SECTION_IDS.includes(s.id))
+        .flatMap(s=>s.items).filter(i=>h.responses[i.id]==='no');
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(9);
+      doc.setTextColor(40,40,40);
+      doc.text(`Hab. ${h.num}`, ML, y+3);
+      let bx = ML+20;
+      if(noItems.length===0){
+        doc.setTextColor(61,138,91);doc.setFont('helvetica','normal');doc.setFontSize(8);
+        doc.text('OK', bx, y+3);
+      } else {
+        noItems.slice(0,5).forEach(i=>{bx+=badge(UL[i.urg]||i.urg,i.urg,bx,y+3)+1;});
+        if(noItems.length>5){
+          doc.setTextColor(102,107,107);doc.setFontSize(7);
+          doc.text(`+${noItems.length-5} más`,bx,y+3);
+        }
+      }
+      doc.setTextColor(40,40,40);
+      y+=7;
+    }
+    y+=3;
+  }
+
+  // ─ PENDIENTES ─
+  const genR2 = cur.generalResponses||{};
+  const genN2 = cur.generalNotas||{};
+  const genF2 = cur.generalFotos||{};
+  const allPend = [];
+  for(const sec of SECTIONS){
+    if(sec.isLTR)continue;
+    const isHab = HAB_SECTION_IDS.includes(sec.id);
+    if(isHab){
+      for(const h of cur.habs){
+        for(const item of sec.items){
+          if(h.responses[item.id]==='no'){
+            allPend.push({...item, secTitle:sec.title, habNum:h.num, nota:h.notas[item.id]||'', fotos:h.fotos[item.id]||[]});
+          }
+        }
+      }
+    } else {
+      for(const item of sec.items){
+        if(genR2[item.id]==='no'){
+          allPend.push({...item, secTitle:sec.title, habNum:'—', nota:genN2[item.id]||'', fotos:genF2[item.id]||[]});
+        }
+      }
+    }
+  }
+  allPend.sort((a,b)=>({critica:0,alta:1,media:2,baja:3}[a.urg]-{critica:0,alta:1,media:2,baja:3}[b.urg]));
+
+  checkPage(18);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(10);
+  doc.setTextColor(40,40,40);
+  doc.text(`PENDIENTES (${allPend.length})`, ML, y);
+  const urgCount = u => allPend.filter(p=>p.urg===u).length;
+  let sx=ML+35;
+  ['critica','alta','media','baja'].forEach(u=>{
+    if(urgCount(u)>0){sx+=badge(`${urgCount(u)} ${UL[u]}`,u,sx,y)+2;}
+  });
+  hline(y+1.5); y+=6;
+
+  if(allPend.length===0){
+    doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(61,138,91);
+    doc.text('Sin pendientes — todos los items cumplen los estandares.',ML,y+4);
+    y+=10;
+  } else {
+    for(let pi=0;pi<allPend.length;pi++){
+      const p=allPend[pi];
+      // Normalize accents for jsPDF Helvetica compatibility
+      const normText = t => t
+        .replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i')
+        .replace(/[óòö]/g,'o').replace(/[úùü]/g,'u').replace(/ñ/g,'n')
+        .replace(/[ÁÀÄÉÈËÍÌÏÓÒÖÚÙÜ]/g,c=>c.normalize('NFD')[0])
+        .replace(/Ñ/g,'N');
+      const nameNorm = normText(p.name);
+      const secNorm  = normText(p.secTitle);
+      const notaNorm = p.nota ? normText(p.nota) : '';
+      // Layout: badge occupies left 22mm, text starts at ML+24
+      const textW = CW - 26;
+      const nameLines = doc.splitTextToSize(nameNorm, textW);
+      const areaText = `${secNorm} · ${p.ref}` + (cur.habs.length>1?` · Hab. ${p.habNum}`:'');
+      const notaLines = notaNorm ? doc.splitTextToSize(`"${notaNorm}"`, textW) : [];
+      const hasPhoto  = p.fotos.length>0;
+      // Calculate total row height
+      const lineH = 4.2;
+      const rowH = Math.max(12,
+        4 + nameLines.length*lineH + 3.5 +
+        (notaLines.length>0 ? notaLines.length*lineH + 1 : 0) +
+        (hasPhoto ? 4 : 0) + 3
+      );
+      checkPage(rowH+2);
+      // alternating row bg
+      if(pi%2===0){doc.setFillColor(245,243,238);doc.rect(ML,y,CW,rowH,'F');}
+      // urgency badge — top-left of the row, vertically centered in first text line
+      const badgeY = y + 5;
+      badge(UL[p.urg], p.urg, ML+1, badgeY);
+      // row number
+      doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(102,107,107);
+      doc.text(`${pi+1}.`, ML+1, badgeY+5);
+      // item name
+      let ty = y + 4.5;
+      doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(40,40,40);
+      doc.text(nameLines, ML+24, ty);
+      ty += nameLines.length * lineH;
+      // area / ref line
+      doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(102,107,107);
+      doc.text(areaText, ML+24, ty);
+      ty += 3.8;
+      // nota
+      if(notaLines.length>0){
+        doc.setFont('helvetica','italic');doc.setFontSize(7);doc.setTextColor(102,107,107);
+        doc.text(notaLines, ML+24, ty);
+        ty += notaLines.length * lineH;
+      }
+      // photo reference
+      if(hasPhoto){
+        doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(86,130,148);
+        doc.text(`[${p.fotos.length} foto(s) - ver Anexo Fotografico]`, ML+24, ty);
+      }
+      doc.setTextColor(40,40,40);
+      y += rowH + 1;
+    }
+  }
+
+  // ─ ANEXO FOTOGRÁFICO ─
+  const allFotos = [];
+  let fotoIdx=1;
+  for(const sec of SECTIONS){
+    if(sec.isLTR) continue;
+    const isHab = HAB_SECTION_IDS.includes(sec.id);
+    if(isHab){
+      for(const h of cur.habs){
+        for(const item of sec.items){
+          const fs = h.fotos[item.id]||[];
+          fs.forEach(src=>allFotos.push({src, label:`${sec.title} · ${item.name}`, sub:`Hab. ${h.num}`, idx:fotoIdx++}));
+        }
+      }
+    } else {
+      for(const item of sec.items){
+        const fs = (cur.generalFotos||{})[item.id]||[];
+        fs.forEach(src=>allFotos.push({src, label:`${sec.title} · ${item.name}`, sub:'Área general', idx:fotoIdx++}));
+      }
+    }
+  }
+
+  if(allFotos.length>0){
+    doc.addPage();y=MT;
+    doc.setFillColor(84,89,89);
+    doc.rect(0,0,PW,18,'F');
+    doc.setTextColor(255,255,255);
+    doc.setFont('helvetica','bold');doc.setFontSize(13);
+    doc.text('ANEXO FOTOGRÁFICO', ML, 12);
+    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(142,159,163);
+    doc.text(`${allFotos.length} foto${allFotos.length>1?'s':''} registradas`, PW-MR, 12, {align:'right'});
+    doc.setTextColor(40,40,40);
+    y=26;
+
+    // Lay out in grid 3 cols
+    const COLS=3;
+    const gapX=5, gapY=8;
+    const imgW=(CW-(COLS-1)*gapX)/COLS;
+    const imgH=imgW*0.7;
+    let col=0;
+
+    for(const f of allFotos){
+      if(col===0) checkPage(imgH+16);
+      const x = ML + col*(imgW+gapX);
+      // load image
+      try{
+        // Convert to small canvas to get format
+        const img = await new Promise((res,rej)=>{
+          const im=new Image();im.crossOrigin='anonymous';
+          im.onload=()=>res(im);im.onerror=rej;im.src=f.src;
+        });
+        const canvas=document.createElement('canvas');
+        canvas.width=300;canvas.height=Math.round(300*(img.naturalHeight/img.naturalWidth));
+        const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,canvas.width,canvas.height);
+        const dataUrl=canvas.toDataURL('image/jpeg',0.7);
+        doc.addImage(dataUrl,'JPEG',x,y,imgW,imgH);
+      }catch(e){
+        // placeholder if image fails
+        doc.setFillColor(220,220,220);
+        doc.rect(x,y,imgW,imgH,'F');
+        doc.setFontSize(7);doc.setTextColor(150,150,150);
+        doc.text('Imagen no disponible',x+imgW/2,y+imgH/2,{align:'center'});
+        doc.setTextColor(40,40,40);
+      }
+      // number badge
+      doc.setFillColor(84,89,89);
+      doc.circle(x+4,y+4,3,'F');
+      doc.setTextColor(255,255,255);doc.setFontSize(6.5);doc.setFont('helvetica','bold');
+      doc.text(String(f.idx),x+4,y+4+2,{align:'center'});
+      doc.setTextColor(40,40,40);
+      // caption
+      doc.setFont('helvetica','bold');doc.setFontSize(7);
+      const capLines=doc.splitTextToSize(f.label,imgW);
+      doc.text(capLines,x,y+imgH+4);
+      doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(102,107,107);
+      doc.text(f.sub,x,y+imgH+4+capLines.length*3.2);
+      doc.setTextColor(40,40,40);
+
+      col++;
+      if(col>=COLS){col=0;y+=imgH+gapY+capLines.length*3.2+6;}
+    }
+    if(col>0) y+=imgH+gapY+10;
+  }
+
+  // ─ FOOTER on all pages ─
+  const totalPages = doc.getNumberOfPages();
+  for(let i=1;i<=totalPages;i++){
+    doc.setPage(i);
+    doc.setDrawColor(214,211,200);
+    doc.line(ML,PH-10,PW-MR,PH-10);
+    doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(150,150,150);
+    doc.text('Grupo Riberana · Sistema QAR',ML,PH-5.5);
+    doc.text(`Pág. ${i} / ${totalPages}`,PW-MR,PH-5.5,{align:'right'});
+  }
+
+  // ─ SAVE ─
+  const filename = `QAR_${cur.propiedad}_${cur.fecha}.pdf`;
+  try{
+    const dl = await claude.use('downloads');
+    if(dl){
+      const pdfBlob = doc.output('blob');
+      await dl.save({filename, data:pdfBlob});
+      return;
+    }
+  }catch(e){}
+  // fallback: data URI download attempt
+  try{
+    const dataUri = doc.output('datauristring');
+    showToast('PDF generado. Usa el botón de descarga de tu navegador si no inicia automáticamente.');
+    // Open in new tab as fallback
+    const w=window.open();if(w){w.document.write(`<iframe src="${dataUri}" style="width:100%;height:100%;border:none"></iframe>`);}
+  }catch(e){showToast('Error al generar PDF.');}
+}
+
+function copyBC(){
+  const txt = document.getElementById('bc-text')?.textContent||'';
+  const btn = event.target;
+  const done=()=>{btn.textContent='✅ Copiado';setTimeout(()=>btn.textContent='📋 Copiar para Basecamp',2000);};
+  if(navigator.clipboard?.writeText){navigator.clipboard.writeText(txt).then(done).catch(()=>fbCopy(txt,done));}
+  else fbCopy(txt,done);
+}
+function fbCopy(txt,cb){
+  const ta=document.createElement('textarea');ta.value=txt;ta.style.position='fixed';ta.style.opacity='0';
+  document.body.appendChild(ta);ta.select();try{document.execCommand('copy');cb();}catch(e){}document.body.removeChild(ta);
+}
+
+async function publishToBasecamp(auto){
+  if(!cur||!cur.closed){showToast('Cierra la inspección primero.');return;}
+  if(cur.published){showToast('Esta inspección ya fue publicada.');return;}
+  const genR = cur.generalResponses || cur.habs[0]?.responses || {};
+  const genN = cur.generalNotas    || cur.habs[0]?.notas    || {};
+  const pendientes = [];
+  for(const sec of getVisibleSections()){
+    if(sec.isLTR) continue;
+    const items = getSectionItems(sec);
+    if(!isHabSection(sec.id)){
+      for(const item of items){ if(item.esNota) continue;
+        if((genR[item.id]||'')==='no') pendientes.push({item, nota:genN[item.id]||'', hab:'General', cat:cur.categorias?.[item.id]||null}); }
+    } else {
+      for(const hab of cur.habs) for(const item of items){ if(item.esNota) continue;
+        if((hab.responses[item.id]||'')==='no') pendientes.push({item, nota:hab.notas[item.id]||'', hab:`Hab. ${hab.num||hab.id}`, cat:cur.categorias?.[item.id]||null}); }
+    }
+  }
+  const urgLabel = {critica:'🔴 CRÍTICA', alta:'🟠 ALTA', media:'🟡 MEDIA', baja:'🟢 BAJA'};
+  const propNombre = PROPIEDADES[cur.propiedad]?.nombre||cur.propiedad;
+  const scoreStr = calcScore(cur).overall!==null ? calcScore(cur).overall+'%' : '—';
+  const esDiario = cur.modo==='diario';
+  const ordenUrg = {critica:0, alta:1, media:2, baja:3};
+  const steps = [];
+  for(const p of pendientes){
+    const {item, hab, cat} = p;
+    const esMant = !cat || cat==='mantenimiento' || cat==='ambos';
+    const esLimp = cat==='limpieza' || cat==='ambos';
+    const alerta = esDiario && item.id==='cf1' ? '🚨 ALERTA URGENTE — ' : '';
+    const tituloBase = `${alerta}${urgLabel[item.urg]||item.urg||''} ${item.name} — ${hab}${p.nota?' · '+p.nota:''}`;
+    if(esMant) steps.push({_o: ordenUrg[item.urg]??9, title: cat==='ambos' ? `🔧 [MANT] ${tituloBase}` : tituloBase, rol:'mant'});
+    if(esLimp) steps.push({_o: ordenUrg[item.urg]??9, title: cat==='ambos' ? `🧹 [LIMP] ${tituloBase}` : tituloBase, rol:'limp'});
+  }
+  steps.sort((x,y)=>x._o-y._o); steps.forEach(x=>delete x._o);
+  const cnt = k => pendientes.filter(p=>p.item.urg===k).length;
+  const tipoTxt = esDiario ? 'Guardia Diaria' : 'Inspección QAR';
+  const card = {
+    title: `${esDiario?'🔍':'📋'} ${tipoTxt} ${cur.propiedad} — ${cur.fecha} (${steps.length} hallazgos)`,
+    content: [
+      `<p><strong>Propiedad:</strong> ${propNombre} &nbsp;|&nbsp; <strong>Supervisor:</strong> ${cur.inspector||'—'} &nbsp;|&nbsp; <strong>Fecha:</strong> ${cur.fecha}</p>`,
+      `<p><strong>Score:</strong> ${scoreStr}</p>`,
+      `<p><strong>Hallazgos pendientes (respuestas "NO"):</strong> ${steps.length} — 🔴 ${cnt('critica')} críticos · 🟠 ${cnt('alta')} altos · 🟡 ${cnt('media')} medios · 🟢 ${cnt('baja')} bajos</p>`,
+      `<p>Cada hallazgo es una subtarea de esta tarjeta, ordenada por severidad. Márcala como completada al corregirla.</p>`,
+    ].join('\n'),
+  };
+  cur.publishError='';
+  showToast(auto?'Publicando en Basecamp…':'Reintentando publicación…');
+  try{
+    let r;
+    do{
+      r = await api('publish?id='+cur.id,{method:'POST',body:{card,steps}});
+      if(!r.done) showToast(`Publicando en Basecamp… ${r.progress}/${r.total}`);
+    }while(!r.done);
+    cur.published=true; cur.estado='publicada'; cur.bcUrl=r.url||cur.bcUrl;
+    showToast(r.total===0?'✅ Sin hallazgos pendientes. Inspección cerrada.':`✅ Publicado en Basecamp: 1 tarjeta con ${r.total} subtarea(s).`);
+  }catch(e){
+    cur.publishError=e.message;
+    showToast('⚠️ Cerrada, pero no se pudo publicar en Basecamp: '+e.message);
+  }
+  if(!auto) renderReport();
+}
+
+async function generateMinuta(){
+  if(!window.jspdf){showToast('Cargando librería PDF…');return;}
+  showToast('Generando Minuta de Guardia…');
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF({orientation:'landscape',unit:'mm',format:'letter'});
+  const W=279.4, H=215.9;
+  const marginL=12, marginR=12, marginT=18, marginB=18;
+  const pageW = W-marginL-marginR;
+  let y=marginT;
+  let pageNum=1;
+
+  const prop = PROPIEDADES[cur.propiedad]?.nombre||cur.propiedad;
+  const modoLabel = cur.modo==='diario'?'Guardia Diaria':'Inspección QAR';
+
+  function addFooter(){
+    doc.setFontSize(8);doc.setTextColor(140,140,140);
+    doc.text(`Grupo Riberana · ${prop} · ${cur.fecha} · Pág. ${pageNum}`,W/2,H-6,{align:'center'});
+  }
+  function checkPage(need=10){
+    if(y+need>H-marginB){
+      addFooter();doc.addPage();pageNum++;y=marginT;
+    }
+  }
+
+  // ── Header ──
+  doc.setFillColor(84,89,89);
+  doc.rect(0,0,W,22,'F');
+  doc.setFontSize(16);doc.setFont('helvetica','bold');doc.setTextColor(255,255,255);
+  doc.text('MINUTA DE GUARDIA DIARIA QAR',marginL,13);
+  doc.setFontSize(9);doc.setFont('helvetica','normal');
+  doc.text(`${prop}  ·  ${cur.fecha}  ·  Supervisor: ${cur.inspector||'—'}  ·  ${modoLabel}`,marginL,19);
+  y=30;
+
+  // ── Collect all pending items across all sections/habs ──
+  const rows=[];
+  const visSecs = getVisibleSections();
+  for(const sec of visSecs){
+    if(sec.isLTR)continue;
+    const items = getSectionItems(sec);
+    const genMode = !isHabSection(sec.id);
+    if(genMode){
+      const gs = getGeneralStore();
+      for(const item of items){
+        if(item.esNota)continue;
+        const resp=gs.responses[item.id]||'';
+        const nota=gs.notas[item.id]||'';
+        const fotos=gs.fotos[item.id]||[];
+        if(resp==='no'){
+          rows.push({sec:sec.title,item:item.name,ref:item.ref,urg:item.urg,resp,nota,fotos,hab:'General',secId:sec.id,itemId:item.id,genMode:true});
+        }
+      }
+    } else {
+      for(const hab of cur.habs){
+        for(const item of items){
+          if(item.esNota)continue;
+          const resp=hab.responses[item.id]||'';
+          const nota=hab.notas[item.id]||'';
+          const fotos=hab.fotos[item.id]||[];
+          if(resp==='no'){
+            rows.push({sec:sec.title,item:item.name,ref:item.ref,urg:item.urg,resp,nota,fotos,hab:`Hab. ${hab.num||hab.id}`,secId:sec.id,itemId:item.id,genMode:false});
+          }
+        }
+      }
+    }
+  }
+
+  // ── Table header ──
+  const cols=[
+    {label:'Pendiente / Anomalía',w:0.30},
+    {label:'Sección / Área',w:0.14},
+    {label:'Hab / Zona',w:0.09},
+    {label:'Urgencia',w:0.09},
+    {label:'Asignar a',w:0.14},
+    {label:'Fecha límite',w:0.11},
+    {label:'Estatus',w:0.13},
+  ];
+  const totalW=pageW;
+  const colWidths=cols.map(c=>c.w*totalW);
+
+  function drawTableHeader(){
+    doc.setFillColor(84,89,89);
+    doc.rect(marginL,y,pageW,7,'F');
+    doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.setTextColor(255,255,255);
+    let cx=marginL;
+    for(let i=0;i<cols.length;i++){
+      doc.text(cols[i].label,cx+2,y+5);
+      cx+=colWidths[i];
+    }
+    y+=7;
+  }
+
+  drawTableHeader();
+
+  const urgColors={'critica':[192,57,43],'alta':[184,118,86],'media':[212,160,23],'baja':[61,138,91]};
+  const urgLabels={'critica':'CRÍTICA','alta':'ALTA','media':'MEDIA','baja':'BAJA'};
+  let photoIndex=1;
+  const photoList=[];
+
+  for(let ri=0;ri<rows.length;ri++){
+    const row=rows[ri];
+    const rowH=12;
+    checkPage(rowH+2);
+    // re-draw header if page just changed
+    if(y===marginT){drawTableHeader();}
+
+    const bg=ri%2===0?[255,255,255]:[245,243,238];
+    doc.setFillColor(...bg);
+    doc.rect(marginL,y,pageW,rowH,'F');
+    doc.setDrawColor(214,211,200);
+    doc.rect(marginL,y,pageW,rowH,'S');
+
+    doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(42,44,44);
+    let cx=marginL;
+
+    // Item name (col 0) - wrap text
+    const itemLines=doc.splitTextToSize(row.item,colWidths[0]-4);
+    doc.text(itemLines.slice(0,2),cx+2,y+4.5);
+    if(row.nota){
+      doc.setTextColor(100,107,107);
+      doc.setFontSize(6);
+      const notaLines=doc.splitTextToSize('> '+row.nota.replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u').replace(/[ÁÀÄÉÈËÍÌÏÓÒÖÚÙÜ]/g,c=>c.normalize('NFD')[0].toUpperCase()).replace(/ñ/g,'n').replace(/Ñ/g,'N'),colWidths[0]-4);
+      doc.text(notaLines.slice(0,1),cx+2,y+9);
+      doc.setFontSize(7);doc.setTextColor(42,44,44);
+    }
+    if(row.fotos.length>0){
+      doc.setTextColor(86,130,148);
+      doc.text(`[${row.fotos.length} foto(s) - ver Anexo ${photoIndex}-${photoIndex+row.fotos.length-1}]`,cx+2,y+10.5);
+      for(const f of row.fotos){photoList.push({src:f,idx:photoIndex++,sec:row.sec,item:row.item,hab:row.hab});}
+      doc.setTextColor(42,44,44);
+    }
+    cx+=colWidths[0];
+
+    // Sección (col 1)
+    doc.setFontSize(6.5);
+    const secLines=doc.splitTextToSize(row.sec,colWidths[1]-4);
+    doc.text(secLines.slice(0,2),cx+2,y+4.5);
+    doc.setFontSize(7);
+    cx+=colWidths[1];
+
+    // Hab (col 2)
+    doc.text(row.hab,cx+2,y+4.5);
+    cx+=colWidths[2];
+
+    // Urgencia (col 3)
+    const uc=urgColors[row.urg]||[140,140,140];
+    doc.setFillColor(...uc);
+    doc.roundedRect(cx+1,y+2.5,colWidths[3]-2,5,1,1,'F');
+    doc.setFont('helvetica','bold');doc.setTextColor(255,255,255);doc.setFontSize(6.5);
+    doc.text(urgLabels[row.urg]||row.urg,cx+colWidths[3]/2,y+5.8,{align:'center'});
+    doc.setFont('helvetica','normal');doc.setTextColor(42,44,44);doc.setFontSize(7);
+    cx+=colWidths[3];
+
+    // Asignar a (col 4) — blank line for fill
+    doc.setDrawColor(180,180,180);
+    doc.line(cx+2,y+rowH-3,cx+colWidths[4]-2,y+rowH-3);
+    cx+=colWidths[4];
+
+    // Fecha límite (col 5)
+    doc.line(cx+2,y+rowH-3,cx+colWidths[5]-2,y+rowH-3);
+    cx+=colWidths[5];
+
+    // Estatus (col 6) — checkbox options
+    doc.setFontSize(6);doc.setTextColor(80,89,89);
+    doc.setFontSize(6.5);doc.setTextColor(80,89,89);
+    doc.text('[ ] Pendiente',cx+2,y+4);
+    doc.text('[ ] En proceso',cx+2,y+7.5);
+    doc.text('[ ] Listo',cx+2,y+11);
+    doc.setTextColor(42,44,44);
+
+    y+=rowH;
+  }
+
+  if(rows.length===0){
+    checkPage(10);
+    doc.setFontSize(11);doc.setTextColor(61,138,91);
+    doc.text('✓ Sin pendientes registrados en esta guardia.',marginL,y+8);
+    y+=14;
+  }
+
+  // ── Anexo fotográfico ──
+  if(photoList.length>0){
+    checkPage(30);
+    doc.setFontSize(13);doc.setFont('helvetica','bold');doc.setTextColor(84,89,89);
+    doc.text('ANEXO FOTOGRÁFICO',marginL,y+8);
+    doc.setFont('helvetica','normal');
+    y+=14;
+    const COLS=3, cellW=(pageW-8)/COLS, imgH=50;
+    let col=0;
+    for(const ph of photoList){
+      checkPage(imgH+18);
+      const px=marginL+(col*(cellW+4));
+      try{
+        const canvas=document.createElement('canvas');
+        const img2=new Image();img2.src=ph.src;
+        await new Promise(r=>{img2.onload=r;img2.onerror=r;});
+        const scale=Math.min(300/img2.naturalWidth,1);
+        canvas.width=Math.round(img2.naturalWidth*scale);
+        canvas.height=Math.round(img2.naturalHeight*scale);
+        const ctx=canvas.getContext('2d');ctx.drawImage(img2,0,0,canvas.width,canvas.height);
+        const data=canvas.toDataURL('image/jpeg',0.7);
+        const aspect=canvas.height/canvas.width;
+        const drawH=Math.min(imgH,cellW*aspect);
+        doc.addImage(data,'JPEG',px,y,cellW,drawH);
+        doc.setFillColor(84,89,89);
+        doc.roundedRect(px,y,7,6,1,1,'F');
+        doc.setFontSize(6);doc.setFont('helvetica','bold');doc.setTextColor(255,255,255);
+        doc.text(String(ph.idx),px+3.5,y+4.3,{align:'center'});
+        doc.setFont('helvetica','normal');doc.setTextColor(42,44,44);doc.setFontSize(6);
+        const cap=doc.splitTextToSize(`${ph.sec} · ${ph.item} · ${ph.hab}`,cellW);
+        doc.text(cap.slice(0,2),px,y+imgH+4);
+      }catch(e){}
+      col++;
+      if(col>=COLS){col=0;y+=imgH+16;}
+    }
+    if(col>0)y+=imgH+16;
+  }
+
+  addFooter();
+
+  // ── Download ──
+  try{
+    const dl=await claude.use('downloads');
+    if(dl){
+      const arr=doc.output('arraybuffer');
+      await dl.save({filename:`Minuta_QAR_${cur.propiedad}_${cur.fecha}.pdf`,data:new Blob([arr],{type:'application/pdf'})});
+      return;
+    }
+  }catch(e){}
+  try{
+    const dataUri=doc.output('datauristring');
+    showToast('Minuta generada.');
+    const w=window.open();if(w){w.document.write(`<iframe src="${dataUri}" style="width:100%;height:100%;border:none"></iframe>`);}
+  }catch(e){showToast('Error al generar minuta.');}
+}
+
+// ══════════════════════════════════════════════════════════
+//  LIGHTBOX
+// ══════════════════════════════════════════════════════════
+function openLightbox(src){
+  document.getElementById('lightbox-img').src=src;
+  document.getElementById('lightbox').classList.remove('hidden');
+}
+function closeLightbox(){document.getElementById('lightbox').classList.add('hidden');}
+
+// ══════════════════════════════════════════════════════════
+//  AUTH — usuarios y sesión
+// ══════════════════════════════════════════════════════════
+let sesion = null;
+
+function userToSesion(u){ return {email:u.email,nombre:u.nombre,esAdmin:!!u.esAdmin,hoteles:u.propiedades||[],tipos:u.tipos||[]}; }
+
+async function doLogin(){
+  const email = (document.getElementById('login-email').value||'').trim().toLowerCase();
+  const pin   = (document.getElementById('login-pin').value||'').trim();
+  const errEl = document.getElementById('login-error');
+  errEl.style.display='none';
+  if(!email||!pin){ errEl.textContent='Completa correo y PIN.'; errEl.style.display='block'; return; }
+  try{
+    const j=await api('login',{method:'POST',body:{email,pin}});
+    token=j.token; try{localStorage.setItem(TOKEN_KEY,token);}catch(e){}
+    sesion=userToSesion(j.user);
+    await postLogin();
+  }catch(e){ errEl.textContent=e.message; errEl.style.display='block'; }
+}
+async function postLogin(){
+  document.getElementById('login-email').value='';
+  document.getElementById('login-pin').value='';
+  document.getElementById('login-error').style.display='none';
+  try{await loadFromServer();}catch(e){ showToast(e.message); }
+  renderHome();
+}
+function doLogout(){
+  token=null; try{localStorage.removeItem(TOKEN_KEY);}catch(e){}
+  sesion=null; cur=null; store={inspections:[]};
+  showScreen('screen-login');
+}
+
+// ── Gestión de usuarios (admin) ──────────────────────────
+const PROP_NAMES = {MX051:'Monterrey',MX056:'Tampico',MX061:'Vallarta',ALL:'Todas'};
+let _adminUsers=[];
+async function renderAdmin(){
+  if(!sesion||!sesion.esAdmin){ showToast('Acceso restringido.'); return; }
+  showScreen('screen-admin');
+  const list=document.getElementById('admin-users-list');
+  list.innerHTML='<div class="hist-empty">Cargando…</div>';
+  try{ _adminUsers=(await api('users')).users; }catch(e){ list.innerHTML='<div class="hist-empty">'+e.message+'</div>'; return; }
+  const users=_adminUsers.filter(u=>!u.esAdmin);
+  if(!users.length){ list.innerHTML=`<div class="hist-empty">No hay supervisores registrados. Usa "+ Nuevo usuario" para agregar.</div>`; return; }
+  const ck=(u,field,val,label)=>`<label style="font-size:11px;margin-right:10px;white-space:nowrap"><input type="checkbox" ${(u[field]||[]).includes(val)?'checked':''} onchange="cambiarAcceso('${u.email}','${field}','${val}',this.checked)"> ${label}</label>`;
+  list.innerHTML = users.map(u=>`
+    <div class="user-row" style="flex-wrap:wrap">
+      <div class="user-status-dot ${u.activo?'active':'inactive'}"></div>
+      <div class="user-row-info" style="min-width:200px">
+        <div class="user-row-name">${u.nombre}</div>
+        <div class="user-row-email">${u.email}</div>
+        <div style="margin-top:6px"><span style="font-size:10px;color:var(--fg-muted);text-transform:uppercase">Propiedades</span><br>
+          ${ck(u,'propiedades','MX051','Monterrey')}${ck(u,'propiedades','MX056','Tampico')}${ck(u,'propiedades','MX061','Vallarta')}${ck(u,'propiedades','ALL','Todas')}</div>
+        <div style="margin-top:4px"><span style="font-size:10px;color:var(--fg-muted);text-transform:uppercase">Tipo de inspección</span><br>
+          ${ck(u,'tipos','qar','Inspección QAR')}${ck(u,'tipos','diaria','Guardia Diaria')}</div>
+      </div>
+      <div class="user-actions">
+        <button class="btn btn-sm btn-secondary" onclick="toggleUsuario('${u.email}',${!u.activo})">${u.activo?'Desactivar':'Activar'}</button>
+        <button class="btn btn-sm btn-secondary" onclick="cambiarPin('${u.email}')">Cambiar PIN</button>
+        <button class="btn btn-sm" style="background:var(--danger);color:#fff;border-color:var(--danger)" onclick="eliminarUsuario('${u.email}')">Eliminar</button>
+      </div>
+    </div>`).join('');
+}
+async function cambiarAcceso(email,field,val,checked){
+  const u=_adminUsers.find(x=>x.email===email); if(!u)return;
+  const set=new Set(u[field]||[]); checked?set.add(val):set.delete(val);
+  u[field]=[...set];
+  try{ await api('users?email='+encodeURIComponent(email),{method:'PATCH',body:{[field]:u[field]}}); showToast('Acceso actualizado.'); }
+  catch(e){ showToast(e.message); }
+}
+function limpiarNuevoUsuario(){
+  ['nu-nombre','nu-email','nu-pin'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('nu-error').style.display='none';
+  document.querySelectorAll('#nu-hotels input,#nu-tipos input').forEach(cb=>{
+    cb.checked=false; cb.closest('.auth-hotel-opt').classList.remove('sel');
+    cb.onchange=()=>cb.closest('.auth-hotel-opt').classList.toggle('sel',cb.checked);
+  });
+}
+async function crearUsuario(){
+  const nombre=document.getElementById('nu-nombre').value.trim();
+  const email=document.getElementById('nu-email').value.trim().toLowerCase();
+  const pin=document.getElementById('nu-pin').value.trim();
+  const propiedades=[...document.querySelectorAll('#nu-hotels input:checked')].map(cb=>cb.value);
+  const tipos=[...document.querySelectorAll('#nu-tipos input:checked')].map(cb=>cb.value);
+  const errEl=document.getElementById('nu-error'); errEl.style.display='none';
+  const fail=m=>{errEl.textContent=m;errEl.style.display='block';};
+  if(!nombre||!email||!pin) return fail('Completa nombre, correo y PIN.');
+  if(!propiedades.length) return fail('Selecciona al menos una propiedad.');
+  if(!tipos.length) return fail('Selecciona al menos un tipo de inspección.');
+  if(!/^\d{4}$/.test(pin)) return fail('El PIN debe ser de 4 dígitos numéricos.');
+  try{ await api('users',{method:'POST',body:{nombre,email,pin,propiedades,tipos}}); showToast('Usuario creado: '+nombre); renderAdmin(); }
+  catch(e){ fail(e.message); }
+}
+async function toggleUsuario(email,activo){
+  try{ await api('users?email='+encodeURIComponent(email),{method:'PATCH',body:{activo}}); renderAdmin(); }catch(e){showToast(e.message);}
+}
+function cambiarPin(email){
+  const pin=prompt('Nuevo PIN de 4 dígitos para '+email); if(pin===null)return;
+  if(!/^\d{4}$/.test(pin.trim())){showToast('El PIN debe ser de 4 dígitos.');return;}
+  api('users?email='+encodeURIComponent(email),{method:'PATCH',body:{pin:pin.trim()}}).then(()=>showToast('PIN actualizado.')).catch(e=>showToast(e.message));
+}
+function eliminarUsuario(email){
+  showConfirm('¿Eliminar este supervisor? No podrá iniciar sesión.', async ()=>{
+    try{ await api('users?email='+encodeURIComponent(email),{method:'DELETE'}); renderAdmin(); }catch(e){showToast(e.message);}
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded',async ()=>{
+  document.getElementById('hi-fecha').value = new Date().toISOString().slice(0,10);
+  if(token){
+    try{
+      const j=await api('me'); sesion=userToSesion(j.user);
+      await loadFromServer(); renderHome(); return;
+    }catch(e){}
+  }
+  showScreen('screen-login');
+});
+</script>
+
+<!-- ══════════════════════════════════════════════════════
+     HTML
+══════════════════════════════════════════════════════ -->
+
+<!-- LIGHTBOX -->
+<div class="lightbox hidden" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightbox-img" src="" alt="Foto">
+</div>
+
+<!-- MODAL — Confirmación genérica -->
+<div class="modal-backdrop hidden" id="modal-confirm">
+  <div class="modal-box">
+    <h3 style="margin-bottom:10px">Confirmar acción</h3>
+    <p id="modal-confirm-msg" style="font-size:13px;color:var(--fg-muted);margin-bottom:16px"></p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="_confirmCancel()">Cancelar</button>
+      <button class="btn" id="modal-confirm-ok" onclick="_confirmOk()"
+        style="background:var(--danger);color:#fff;border-color:var(--danger)">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL — Agregar habitación -->
+<div class="modal-backdrop hidden" id="modal-add-hab">
+  <div class="modal-box">
+    <h3>Agregar habitación</h3>
+    <p style="font-size:13px;color:var(--fg-muted);margin-bottom:12px">Ingresa el número o identificador de la habitación.</p>
+    <input type="text" id="modal-hab-num" placeholder="ej. 205, 310, Suite 1…"
+      style="width:100%;border:1px solid var(--border);border-radius:var(--r);padding:9px 11px;font-size:15px;font-family:var(--font-body);background:var(--surface);color:var(--fg);"
+      onkeydown="if(event.key==='Enter')confirmAddHab()">
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-add-hab').classList.add('hidden')">Cancelar</button>
+      <button class="btn btn-pizarra" onclick="confirmAddHab()">+ Agregar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL — Cerrar inspección -->
+<div class="modal-backdrop hidden" id="modal-close">
+  <div class="modal-box">
+    <h3>¿Cerrar inspección?</h3>
+    <p style="font-size:13px;color:var(--fg-muted)">Al cerrar, la inspección queda bloqueada (no se podrá editar) y se publicará automáticamente en Basecamp: una tarjeta con una subtarea por cada punto en “No”. Solo el administrador puede reabrirla si aún no se publicó.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-close').classList.add('hidden')">Cancelar</button>
+      <button class="btn btn-ok" onclick="confirmClose()">✓ Cerrar y guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── SCREEN: LOGIN ─── -->
+<div class="screen active" id="screen-login">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="brand">Grupo Riberana</div>
+      <div class="sub">Sistema QAR · Acceso</div>
+    </div>
+    <div class="auth-title">Iniciar sesión</div>
+    <div class="auth-error" id="login-error"></div>
+    <div class="auth-field">
+      <label>Correo electrónico</label>
+      <input type="email" id="login-email" placeholder="tu@correo.com" autocomplete="email"
+        onkeydown="if(event.key==='Enter')document.getElementById('login-pin').focus()">
+    </div>
+    <div class="auth-field">
+      <label>PIN</label>
+      <input type="password" id="login-pin" placeholder="••••" maxlength="8" inputmode="numeric"
+        onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px;margin-top:4px" onclick="doLogin()">
+      Entrar
+    </button>
+    <div class="auth-link" onclick="showScreen('screen-login');document.getElementById('login-error').style.display='none'">
+      ¿Problemas para acceder? Contacta al administrador.
+    </div>
+  </div>
+</div>
+
+<!-- ─── SCREEN: ADMIN – CREAR USUARIO ─── -->
+<div class="screen" id="screen-nuevo-usuario">
+  <div class="auth-card" style="max-width:460px">
+    <div class="auth-title">Nuevo supervisor</div>
+    <div class="auth-error" id="nu-error"></div>
+    <div class="auth-field">
+      <label>Nombre completo *</label>
+      <input type="text" id="nu-nombre" placeholder="Nombre Apellido">
+    </div>
+    <div class="auth-field">
+      <label>Correo electrónico *</label>
+      <input type="email" id="nu-email" placeholder="correo@ejemplo.com">
+    </div>
+    <div class="auth-field">
+      <label>PIN (4 dígitos) *</label>
+      <input type="password" id="nu-pin" placeholder="••••" maxlength="4" inputmode="numeric">
+    </div>
+    <div class="auth-field">
+      <label>Propiedades asignadas *</label>
+      <div class="auth-hotels" id="nu-hotels">
+        <label class="auth-hotel-opt"><input type="checkbox" value="MX051"> MX051 Monterrey</label>
+        <label class="auth-hotel-opt"><input type="checkbox" value="MX056"> MX056 Tampico</label>
+        <label class="auth-hotel-opt"><input type="checkbox" value="MX061"> MX061 Vallarta</label>
+        <label class="auth-hotel-opt"><input type="checkbox" value="ALL"> Todas</label>
+      </div>
+    </div>
+    <div class="auth-field">
+      <label>Tipo de inspección permitido *</label>
+      <div class="auth-hotels" id="nu-tipos">
+        <label class="auth-hotel-opt"><input type="checkbox" value="qar"> Inspección QAR</label>
+        <label class="auth-hotel-opt"><input type="checkbox" value="diaria"> Guardia Diaria</label>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:4px">
+      <button class="btn btn-secondary" style="flex:1;justify-content:center" onclick="renderAdmin()">Cancelar</button>
+      <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="crearUsuario()">Crear usuario</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── SCREEN: ADMIN ─── -->
+<div class="screen" id="screen-admin">
+  <div class="admin-wrap">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;flex-wrap:wrap">
+      <button class="btn btn-secondary btn-sm" onclick="renderHome()">← Inicio</button>
+      <h1 style="font-family:var(--font-display);font-size:24px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;flex:1">Gestión de supervisores</h1>
+      <button class="btn btn-primary btn-sm" onclick="showScreen('screen-nuevo-usuario');limpiarNuevoUsuario()">+ Nuevo usuario</button>
+    </div>
+    <div id="admin-users-list"></div>
+  </div>
+</div>
+
+<!-- ─── SCREEN: HOME ─── -->
+<div class="screen" id="screen-home">
+  <div style="position:absolute;top:16px;right:16px;display:flex;gap:8px;align-items:center">
+    <span id="home-username" style="font-size:12px;color:var(--fg-muted)"></span>
+    <button class="btn btn-secondary btn-sm" id="btn-admin-home" style="display:none" onclick="renderAdmin()">Admin</button>
+    <button class="btn btn-secondary btn-sm" onclick="doLogout()">Salir</button>
+  </div>
+  <div class="home-logo">
+    <div class="brand">Grupo Riberana</div>
+    <div class="sub">Sistema QAR · Revisiones de Calidad</div>
+  </div>
+
+  <div class="new-rev-card">
+    <h2>Nueva revisión</h2>
+    <div style="margin-bottom:12px">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--fg-muted);margin-bottom:6px">Modelo</div>
+      <div class="mode-cards">
+        <div class="mode-card sel" data-mode="completo" onclick="selectedMode='completo';document.querySelectorAll('.mode-card').forEach(c=>c.classList.toggle('sel',c.dataset.mode==='completo'));document.getElementById('field-rep').style.display=''">
+          <div class="mc-icon">📋</div>
+          <div class="mc-title">Inspección QAR</div>
+          <div class="mc-desc">Todos los ítems QAR · Mín. cada 60 días</div>
+        </div>
+        <div class="mode-card" data-mode="diario" onclick="selectedMode='diario';document.querySelectorAll('.mode-card').forEach(c=>c.classList.toggle('sel',c.dataset.mode==='diario'));document.getElementById('field-rep').style.display='none'">
+          <div class="mc-icon">🔍</div>
+          <div class="mc-title">Guardia Diaria</div>
+          <div class="mc-desc">Ítems críticos y de alto impacto</div>
+        </div>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="field span2">
+        <label>Propiedad</label>
+        <select id="hi-prop">
+          <option value="MX051">Comfort Inn Monterrey Valle (MX051)</option>
+          <option value="MX056">Comfort Inn Tampico (MX056)</option>
+          <option value="MX061">Comfort Inn Puerto Vallarta (MX061)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Supervisor *</label>
+        <input type="text" id="hi-inspector" placeholder="Nombre del evaluador">
+      </div>
+      <div class="field">
+        <label>Fecha</label>
+        <input type="date" id="hi-fecha">
+      </div>
+      <div class="field span2" id="field-rep">
+        <label>Representante de propiedad</label>
+        <input type="text" id="hi-rep" placeholder="Gerente / contacto presente">
+      </div>
+    </div>
+    <div style="margin-top:14px">
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px" onclick="startInspection()">
+        ▶ Iniciar revisión
+      </button>
+    </div>
+  </div>
+
+  <div class="hist-section">
+    <div id="hist-list"></div>
+    <div style="margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <button class="btn" style="background:var(--pizarra);color:#fff;border-color:var(--pizarra)" onclick="renderDashboard()">
+        📊 Dashboards
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── SCREEN: DASHBOARD ─── -->
+<div class="screen" id="screen-dashboard" style="flex-direction:column;align-items:center;padding:24px 16px 80px;">
+  <div style="width:100%;max-width:760px">
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap">
+      <button class="btn btn-secondary btn-sm" onclick="renderHome()">← Inicio</button>
+      <h1 style="font-family:var(--font-display);font-size:26px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--grafito);flex:1">Dashboard QAR</h1>
+      <div style="display:flex;gap:6px" id="dash-prop-tabs"></div>
+    </div>
+
+    <!-- KPI row -->
+    <div id="dash-kpi-row" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px"></div>
+
+    <!-- Score trend chart -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;margin-bottom:16px">
+      <div style="font-family:var(--font-display);font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:14px;color:var(--fg-muted)">Score QAR histórico</div>
+      <div id="dash-chart" style="position:relative;height:160px;overflow:hidden"></div>
+    </div>
+
+    <!-- Two-column: ranking + section KPIs -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px">
+        <div style="font-family:var(--font-display);font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:12px;color:var(--fg-muted)">Secciones con más fallas</div>
+        <div id="dash-ranking"></div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px">
+        <div style="font-family:var(--font-display);font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:12px;color:var(--fg-muted)">KPI por sección</div>
+        <div id="dash-section-kpi"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── SCREEN: INSPECCIÓN ─── -->
+<div class="screen" id="screen-inspect">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sb-logo">
+      <div class="brand">Grupo Riberana</div>
+      <div class="sub">Sistema QAR</div>
+    </div>
+    <div class="sb-prop">
+      <strong id="sb-prop-name">—</strong>
+      <span id="sb-mode-name" style="font-size:10px;color:var(--gris-azul)"></span>
+    </div>
+    <div class="sb-hab-strip" id="sb-habs" style="gap:4px;padding:8px 12px"></div>
+    <nav class="sb-nav" id="sb-nav"></nav>
+    <div class="sb-score">
+      <div class="sc-lbl">Score estimado</div>
+      <div class="sc-big" id="sb-score-big">—</div>
+      <div class="sc-bars" id="sb-bars"></div>
+    </div>
+    <div class="sb-footer">
+      <button class="btn btn-secondary btn-sm" style="flex:1" onclick="salirInspeccion()">← Inicio</button>
+      <button class="btn btn-ok btn-sm" style="flex:1" onclick="closeInspectionModal()">✓ Cerrar</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <!-- mobile bar -->
+    <div class="mob-bar">
+      <div class="brand">QAR Riberana</div>
+      <button class="btn btn-secondary btn-sm" onclick="salirInspeccion()" style="margin-left:auto">← Inicio</button>
+      <div class="mob-score" id="mob-score-txt">—</div>
+    </div>
+
+    <!-- header -->
+    <div class="pg-header">
+      <div>
+        <div class="pg-title" id="pg-title">Inspección QAR</div>
+        <div class="pg-meta">Alineada a Choice Hotels / Ecosure · Mín. cada 60 días</div>
+      </div>
+      <div class="hdr-actions">
+        <span class="save-ind" id="save-ind-main" style="font-size:11px;color:var(--fg-muted)"></span>
+        <button class="btn btn-secondary btn-sm" onclick="guardarBorrador()">💾 Guardar borrador</button>
+        <button class="btn btn-secondary btn-sm" onclick="closeInspectionModal()">🔒 Cerrar inspección</button>
+        <button class="btn btn-primary btn-sm" onclick="switchTab('reporte')">📊 Reporte</button>
+      </div>
+    </div>
+
+    <!-- banners -->
+    <div class="banner-danger" id="banner-autofail" hidden>
+      ⚡ FALLA AUTOMÁTICA — Señalización exterior no iluminada (R&R 600.1). QAR = REPROBADO.
+    </div>
+    <div class="banner-danger" id="banner-closed" hidden style="background:rgba(212,160,23,.15);border-color:var(--warn);color:var(--warn)">
+      🔒 Esta inspección está cerrada. Solo lectura. Ve al Reporte para ver el estado de Basecamp.
+    </div>
+    <div class="banner-danger" id="banner-published" hidden style="background:rgba(45,125,50,.15);border-color:var(--ok);color:var(--ok)">
+      ✅ Publicada en Basecamp. Inspección en modo solo lectura.
+    </div>
+
+    <!-- tabs -->
+    <div class="view-tabs">
+      <button class="view-tab active" data-tab="checklist" onclick="switchTab('checklist')">Checklist</button>
+      <button class="view-tab" data-tab="reporte" onclick="switchTab('reporte')">Reporte Final</button>
+    </div>
+
+    <!-- meta panel -->
+    <div class="meta-panel">
+      <div class="meta-field"><label>Supervisor</label><input type="text" id="meta-inspector" oninput="updateMeta()"></div>
+      <div class="meta-field"><label>Fecha</label><input type="date" id="meta-fecha" oninput="updateMeta()"></div>
+      <div class="meta-field"><label>Representante</label><input type="text" id="meta-rep" oninput="updateMeta()"></div>
+    </div>
+
+    <!-- checklist view -->
+    <div id="inspect-checklist">
+      <div id="sections-container"></div>
+    </div>
+
+    <!-- report view -->
+    <div id="inspect-report" style="display:none"></div>
+
+    <!-- sticky bar -->
+    <div class="sticky-bar">
+      <button class="btn btn-secondary" onclick="switchTab('checklist')">📋 Checklist</button>
+      <button class="btn btn-primary" onclick="switchTab('reporte')">📊 Reporte final</button>
+      <button class="btn btn-secondary" onclick="exportInspection(cur.id)">💾 Descargar JSON</button>
+      <button class="btn btn-ok" onclick="closeInspectionModal()">✓ Cerrar inspección</button>
+    </div>
+  </main>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  DASHBOARD
+// ══════════════════════════════════════════════════════════
+let dashProp = 'ALL';
+let dashModo = 'completo';
+
+function renderDashboard(){
+  showScreen('screen-dashboard');
+  // Build property tabs
+  const tabs = document.getElementById('dash-prop-tabs');
+  const propOpts = [['ALL','Todas'],['MX051','Monterrey'],['MX056','Tampico'],['MX061','Pto. Vallarta']];
+  const ttl=document.querySelector('#screen-dashboard h1');
+  if(ttl) ttl.textContent = dashModo==='completo'?'Dashboard · Inspección QAR':'Dashboard · Guardias Diarias';
+  let modoTabs=document.getElementById('dash-modo-tabs');
+  if(!modoTabs){ modoTabs=document.createElement('div'); modoTabs.id='dash-modo-tabs'; modoTabs.style.cssText='display:flex;gap:6px;width:100%;margin-bottom:14px'; tabs.parentElement.parentElement.insertBefore(modoTabs,tabs.parentElement.nextSibling); }
+  modoTabs.innerHTML=[['completo','📋 Inspección QAR','qar'],['diario','🔍 Guardia Diaria','diaria']].filter(m=>tiposOk.includes(m[2])).map(([k,v])=>`<button class="dash-prop-tab${dashModo===k?' sel':''}" onclick="dashModo='${k}';renderDashboard()">${v}</button>`).join('');
+  const allowedProps = sesion&&(sesion.esAdmin||(sesion.hoteles||[]).includes('ALL')) ? null : (sesion&&sesion.hoteles)||[];
+  tabs.innerHTML = propOpts.filter(([k])=>!allowedProps||k==='ALL'||allowedProps.includes(k)).map(([k,v])=>
+    `<button class="dash-prop-tab${dashProp===k?' sel':''}" onclick="dashProp='${k}';renderDashboard()">${v}</button>`
+  ).join('');
+
+  // Get inspections for selected property (closed only for history)
+  const tiposOk = sesion&&sesion.esAdmin ? ['qar','diaria'] : (sesion&&sesion.tipos)||[];
+  if(dashModo==='completo'&&!tiposOk.includes('qar')&&tiposOk.includes('diaria')) dashModo='diario';
+  if(dashModo==='diario'&&!tiposOk.includes('diaria')&&tiposOk.includes('qar')) dashModo='completo';
+  const allIns = store.inspections.filter(i=>i.closed && i.modo===dashModo);
+  const ins = dashProp==='ALL' ? allIns : allIns.filter(i=>i.propiedad===dashProp);
+  const sorted = [...ins].sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const last = sorted.slice(-10);
+
+  // KPI row
+  const scores = last.map(i=>calcScore(i).overall).filter(v=>v!==null);
+  const avgScore = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : null;
+  const lastScore = scores.length ? scores[scores.length-1] : null;
+  const fails = last.filter(i=>dashModo==='completo'?calcScore(i).autoFail:calcScore(i).alertaSenal).length;
+  const kpiRow = document.getElementById('dash-kpi-row');
+  kpiRow.innerHTML = [
+    ['Score promedio', avgScore!==null?avgScore+'%':'—', last.length+' rev.', scoreColor(avgScore)],
+    ['Último score', lastScore!==null?lastScore+'%':'—', last.length?last[last.length-1].fecha:'', scoreColor(lastScore)],
+    ['Revisiones', last.length, dashProp==='ALL'?'Todas las propiedades':dashProp, 'var(--pizarra)'],
+    [dashModo==='completo'?'Fallas auto':'Alertas señalización', fails, 'en período analizado', fails>0?'var(--danger)':'var(--ok)'],
+  ].map(([label,val,sub,color])=>`
+    <div class="dash-kpi-card">
+      <div class="dash-kpi-label">${label}</div>
+      <div class="dash-kpi-value" style="color:${color||'var(--fg)'}">${val}</div>
+      <div class="dash-kpi-sub">${sub}</div>
+    </div>`).join('');
+
+  // Trend chart (inline SVG)
+  const chartDiv = document.getElementById('dash-chart');
+  if(last.length<2){
+    chartDiv.innerHTML=`<div style="color:var(--fg-muted);font-size:13px;padding:20px 0;text-align:center">Se necesitan al menos 2 inspecciones cerradas para mostrar la tendencia.</div>`;
+  } else {
+    const W=700, H=140, PL=36, PR=12, PT=10, PB=30;
+    const cw=W-PL-PR, ch=H-PT-PB;
+    const pts = last.map(i=>calcScore(i).overall).filter(v=>v!==null);
+    const labels = last.map(i=>i.fecha.slice(5)); // MM-DD
+    const minV=Math.max(0,Math.min(...pts)-10), maxV=Math.min(100,Math.max(...pts)+5);
+    const range=maxV-minV||1;
+    const xStep = cw/(pts.length-1);
+    const toX = i=>PL+i*xStep;
+    const toY = v=>PT+ch-(v-minV)/range*ch;
+    // Grid lines
+    let svgLines='';
+    [0,25,50,75,100].filter(g=>g>=minV&&g<=maxV).forEach(g=>{
+      const gy=toY(g);
+      svgLines+=`<line x1="${PL}" y1="${gy}" x2="${W-PR}" y2="${gy}" stroke="var(--border)" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="${PL-4}" y="${gy+4}" fill="var(--fg-muted)" font-size="9" text-anchor="end">${g}</text>`;
+    });
+    // Line path
+    const pathD = pts.map((v,i)=>`${i===0?'M':'L'}${toX(i)},${toY(v)}`).join(' ');
+    const areaD = pathD+` L${toX(pts.length-1)},${H-PB} L${PL},${H-PB} Z`;
+    // Dots + labels
+    let dotsSvg='';
+    pts.forEach((v,i)=>{
+      const x=toX(i), y=toY(v);
+      const col = v>=85?'#3D8A5B':v>=70?'#D4A017':'#C0392B';
+      dotsSvg+=`<circle cx="${x}" cy="${y}" r="4" fill="${col}" stroke="var(--surface)" stroke-width="2"/>`;
+      if(i===0||i===pts.length-1||pts.length<=6)
+        dotsSvg+=`<text x="${x}" y="${y-8}" fill="${col}" font-size="9" text-anchor="middle" font-weight="600">${v}%</text>`;
+      // x labels
+      if(i===0||i===pts.length-1||pts.length<=5)
+        dotsSvg+=`<text x="${x}" y="${H-2}" fill="var(--fg-muted)" font-size="9" text-anchor="middle">${labels[i]}</text>`;
+    });
+    chartDiv.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" height="160" preserveAspectRatio="xMidYMid meet">
+      <defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="var(--pizarra)" stop-opacity=".25"/>
+        <stop offset="100%" stop-color="var(--pizarra)" stop-opacity="0"/>
+      </linearGradient></defs>
+      ${svgLines}
+      <path d="${areaD}" fill="url(#ag)"/>
+      <path d="${pathD}" fill="none" stroke="var(--pizarra)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+      ${dotsSvg}
+    </svg>`;
+  }
+
+  // Section failure ranking
+  const secFails = {};
+  const secTotals = {};
+  for(const i of last){
+    const genR=i.generalResponses||{};
+    for(const sec of SECTIONS){
+      if(['auto_fail','ltr'].includes(sec.id)) continue;
+      const isHab=HAB_SECTION_IDS.includes(sec.id);
+      for(const item of sec.items){
+        if(item.esNota) continue;
+        const key=sec.id;
+        secTotals[key]=(secTotals[key]||0);
+        secFails[key]=(secFails[key]||0);
+        if(isHab){
+          for(const h of i.habs){
+            const r=h.responses[item.id];
+            if(r&&r!=='na'){secTotals[key]++;if(r==='no')secFails[key]++;}
+          }
+        } else {
+          const r=genR[item.id];
+          if(r&&r!=='na'){secTotals[key]++;if(r==='no')secFails[key]++;}
+        }
+      }
+    }
+  }
+  const ranking = Object.entries(secFails)
+    .map(([sid,fails])=>({sid,fails,total:secTotals[sid]||0,pct:secTotals[sid]?Math.round(fails/secTotals[sid]*100):0}))
+    .filter(r=>r.total>0&&r.fails>0)
+    .sort((a,b)=>b.pct-a.pct)
+    .slice(0,8);
+  const secMap = Object.fromEntries(SECTIONS.map(s=>[s.id,s.title]));
+  const rankDiv = document.getElementById('dash-ranking');
+  if(!ranking.length){
+    rankDiv.innerHTML=`<div style="color:var(--fg-muted);font-size:12px">Sin datos suficientes.</div>`;
+  } else {
+    rankDiv.innerHTML = ranking.map(r=>`
+      <div class="ranking-row">
+        <div style="font-size:11px;min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${secMap[r.sid]||r.sid}">${secMap[r.sid]||r.sid}</div>
+        <div class="ranking-bar-wrap"><div class="ranking-bar" style="width:${r.pct}%"></div></div>
+        <div class="ranking-pct">${r.pct}%</div>
+      </div>`).join('');
+  }
+
+  // Section KPI (avg score per section)
+  const kpiSecs = [
+    {sid:'hab_bs',  label:'Brand Stds. Hab'},
+    {sid:'hab_limp',label:'Limpieza Hab'},
+    {sid:'bano',    label:'Baño'},
+    {sid:'hab_cond',label:'Cond. Hab'},
+    {sid:'recepcion',label:'Recepción'},
+  ];
+  const secKpiDiv = document.getElementById('dash-section-kpi');
+  const secKpiData = kpiSecs.map(({sid,label})=>{
+    let pts=0, max=0;
+    for(const i of last){
+      const sec=SECTIONS.find(s=>s.id===sid); if(!sec) continue;
+      for(const item of sec.items){
+        if(!item.pts||item.esNota) continue;
+        if(HAB_SECTION_IDS.includes(sid)){
+          for(const h of i.habs){
+            const r=h.responses[item.id];
+            if(r==='na')continue;
+            max+=item.pts; if(r==='ok')pts+=item.pts;
+          }
+        } else {
+          const r=(i.generalResponses||{})[item.id];
+          if(r==='na')continue;
+          max+=item.pts; if(r==='ok')pts+=item.pts;
+        }
+      }
+    }
+    const pct = max>0?Math.round(pts/max*100):null;
+    return {label, pct};
+  }).filter(r=>r.pct!==null);
+
+  if(!secKpiData.length){
+    secKpiDiv.innerHTML=`<div style="color:var(--fg-muted);font-size:12px">Sin datos suficientes.</div>`;
+  } else {
+    secKpiDiv.innerHTML = secKpiData.map(r=>{
+      const col = r.pct>=85?'var(--ok)':r.pct>=70?'var(--warn)':'var(--danger)';
+      return `<div class="kpi-sec-row">
+        <div class="kpi-sec-name">${r.label}</div>
+        <div class="kpi-sec-bar-wrap"><div class="kpi-sec-bar" style="width:${r.pct}%;background:${col}"></div></div>
+        <div class="kpi-sec-pct" style="color:${col}">${r.pct}%</div>
+      </div>`;
+    }).join('');
+  }
+}
+
+function scoreColor(v){
+  if(v===null) return 'var(--fg-muted)';
+  return v>=85?'var(--ok)':v>=70?'var(--warn)':'var(--danger)';
+}
+
+// Import JSON
+</script>
+
