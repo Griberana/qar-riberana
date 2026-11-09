@@ -738,11 +738,11 @@ function calcScore(inspection){
   const alertaSenal = !esQar && senalNo;      // Guardia Diaria: solo alerta urgente
   // Aggregate scores: general sections use generalResponses; hab sections sum across all habs
   let clPts=0,clMax=0,cndPts=0,cndMax=0,bsPts=0,bsMax=0;
-  const scoredSecs = SECTIONS.filter(s=>!['auto_fail','ltr'].includes(s.id));
+  const scoredSecs = getVisibleSections(inspection).filter(s=>!['auto_fail','ltr'].includes(s.id));
   const genR = inspection.generalResponses||{};
   for(const sec of scoredSecs){
     const isHab = HAB_SECTION_IDS.includes(sec.id);
-    for(const item of sec.items){
+    for(const item of getSectionItems(sec,inspection)){
       if(!item.pts||item.pts<=0)continue;
       const bkt = getBucket(sec.id, item.ref||'');
       if(isHab){
@@ -1003,10 +1003,11 @@ function renderInspection(){
   else renderReport();
 }
 
-function getVisibleSections(){
+function getVisibleSections(ins){
+  ins=ins||cur;
   return SECTIONS.filter(sec=>{
-    if(cur.modo!=='diario' && sec.id==='huespedes') return false; // Interacción con huéspedes: solo Guardia Diaria
-    if(cur.modo==='diario'){
+    if(ins.modo!=='diario' && sec.id==='huespedes') return false; // Interacción con huéspedes: solo Guardia Diaria
+    if(ins.modo==='diario'){
       // Exclude secciones no aplican en guardia diaria
       if(['ltr','hab_bs','lavanderia'].includes(sec.id))return false;
       if(sec.isLTR)return false;
@@ -1017,8 +1018,9 @@ function getVisibleSections(){
   });
 }
 
-function getSectionItems(sec){
-  if(cur.modo==='diario') return sec.items.filter(i=>i.diario||sec.id==='huespedes');
+function getSectionItems(sec,ins){
+  ins=ins||cur;
+  if(ins.modo==='diario') return sec.items.filter(i=>i.diario||sec.id==='huespedes');
   return sec.items;
 }
 
@@ -1597,14 +1599,14 @@ function renderReport(){
     if(!unrevMap.has(secTitle)) unrevMap.set(secTitle, []);
     unrevMap.get(secTitle).push({name, zona});
   };
-  for(const sec of SECTIONS){
+  for(const sec of getVisibleSections()){
     if(sec.isLTR)continue;
     const isHab = HAB_SECTION_IDS.includes(sec.id);
-    for(const item of sec.items){
+    for(const item of getSectionItems(sec)){
       if(item.esNota)continue;
       if(isHab){
         for(const h of cur.habs){
-          if(!h.responses[item.id]) addUnrev(sec.title, item.name, cur.habs.length>1?`Hab. ${h.num}`:'');
+          if(!h.responses[item.id]) addUnrev(sec.title, item.name, `Hab. ${h.num}`);
         }
       } else if(!genR2[item.id]){
         addUnrev(sec.title, item.name, '');
@@ -1646,7 +1648,7 @@ function renderReport(){
         <li class="pend-item">
           <div style="flex-shrink:0;padding-top:2px"><span class="ub ${UC[p.urg]}">${UL[p.urg]}</span></div>
           <div style="flex:1;min-width:0">
-            <div>${p.name}${cur.habs.length>1?` <span style="font-size:10px;color:var(--fg-muted)">(Hab. ${p.habNum})</span>`:''}${catBadge}</div>
+            <div>${p.name}${p.habNum!=='—'?` <span style="font-size:10px;color:var(--fg-muted)">(Hab. ${p.habNum})</span>`:''}${catBadge}</div>
             <div class="pend-area">${p.secTitle} · ${p.ref}</div>
             ${p.nota?`<div class="pend-nota">"${p.nota}"</div>`:''}
             ${p.fotos.length?`<div class="pend-fotos">${p.fotos.map(src=>`<img class="pend-foto-thumb" src="${src}" onclick="openLightbox('${src}')">`).join('')}</div>`:''}
@@ -1657,7 +1659,7 @@ function renderReport(){
   // Basecamp text
   const catLabel = c => c==='mantenimiento'?'[MANT]':c==='limpieza'?'[LIMP]':c==='ambos'?'[MANT+LIMP]':'[?]';
   const bcLines = allPend.map((p,i)=>
-    `${i+1}. [${UL[p.urg]}]${p.categoria?' '+catLabel(p.categoria):''}${cur.habs.length>1?' Hab.'+p.habNum:''} ${p.secTitle} › ${p.name}${p.nota?'\n   Nota: '+p.nota:''}`
+    `${i+1}. [${UL[p.urg]}]${p.categoria?' '+catLabel(p.categoria):''}${p.habNum!=='—'?' Hab.'+p.habNum:''} ${p.secTitle} › ${p.name}${p.nota?'\n   Nota: '+p.nota:''}`
   ).join('\n');
   const bcText = `=== PENDIENTES QAR — ${prop} ===
 Fecha: ${cur.fecha} | Supervisor: ${cur.inspector||'—'} | Score: ${pct!==null?pct+'%':'—'}
@@ -1776,7 +1778,7 @@ async function generatePDF(){
   doc.setTextColor(255,255,255);
   doc.setFont('helvetica','bold');
   doc.setFontSize(20);
-  doc.text('REPORTE QAR', ML, 15);
+  doc.text(cur.modo==='diario'?'REPORTE GUARDIA DIARIA':'REPORTE INSPECCIÓN QAR', ML, 15);
   doc.setFont('helvetica','normal');
   doc.setFontSize(10);
   doc.text(`${prop}`, ML, 22);
@@ -1914,7 +1916,7 @@ async function generatePDF(){
       // Layout: badge occupies left 22mm, text starts at ML+24
       const textW = CW - 26;
       const nameLines = doc.splitTextToSize(nameNorm, textW);
-      const areaText = `${secNorm} · ${p.ref}` + (cur.habs.length>1?` · Hab. ${p.habNum}`:'');
+      const areaText = `${secNorm} · ${p.ref}` + (p.habNum!=='—'?` · Hab. ${p.habNum}`:'');
       const notaLines = notaNorm ? doc.splitTextToSize(`"${notaNorm}"`, textW) : [];
       const hasPhoto  = p.fotos.length>0;
       // Calculate total row height
