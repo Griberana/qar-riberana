@@ -888,7 +888,7 @@ function histItem(ins,isOpen){
     <div class="hist-dot" style="background:${dot}"></div>
     <div class="hi-info">
       <div class="hi-prop">${prop}${badge}</div>
-      <div class="hi-sub">${ins.fecha} · ${modoTag}${autor}${ins.modo==='completo'||ins.habs.length>1?` · ${ins.habs.length} hab${ins.habs.length>1?'s':''}`:''}</div>
+      <div class="hi-sub">${ins.fecha} · ${modoTag}${autor}${(()=>{const c=cobertura(ins);return c!==null&&c<100?` · ⚠ cobertura ${c}%`:''})()}${ins.modo==='completo'||ins.habs.length>1?` · ${ins.habs.length} hab${ins.habs.length>1?'s':''}`:''}</div>
     </div>
     <div class="hi-score ${scCls}">${pct!==null?pct+'%':'—'}</div>
     <div class="hi-actions" onclick="event.stopPropagation()">
@@ -1499,6 +1499,9 @@ function updateMeta(){
 // ── CLOSE INSPECTION ──
 function closeInspectionModal(){
   if(cur&&cur.closed){showToast('🔒 La inspección ya está cerrada.');return;}
+  const cv=cobertura(cur), w=document.getElementById('close-warn');
+  if(cv!==null&&cv<100){const f=cobertura(cur,true);w.style.display='block';w.innerHTML=`⚠️ Faltan <b>${f}</b> puntos por contestar (cobertura ${cv}%). Los puntos sin responder cuentan como no cumplidos en el score. Puedes volver y completarlos antes de cerrar.`;}
+  else w.style.display='none';
   document.getElementById('modal-close').classList.remove('hidden');
 }
 async function confirmClose(){
@@ -2508,6 +2511,80 @@ function sparkSvg(sc){
   const l1=pts[0].fecha.slice(5),l2=pts[pts.length-1].fecha.slice(5);
   return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">${g}${pts.length>1?`<polyline points="${line}" fill="none" stroke="#568294" stroke-width="1.8"/>`:''}${dots}<text x="${PL}" y="${H-4}" font-size="8" fill="#888">${l1}</text><text x="${W-PR}" y="${H-4}" font-size="8" fill="#888" text-anchor="end">${l2}</text></svg>`;
 }
+
+// ── Cobertura (% de puntos contestados dentro de lo que aplica al tipo de inspección) ──
+function cobertura(ins,faltantes){
+  let a=0,t=0;
+  for(const sec of getVisibleSections(ins)){
+    if(sec.isLTR)continue;
+    const isHab=HAB_SECTION_IDS.includes(sec.id);
+    for(const it of getSectionItems(sec,ins)){
+      if(it.esNota)continue;
+      if(isHab){for(const h of ins.habs){t++;if(h.responses[it.id])a++;}}
+      else{t++;if((ins.generalResponses||{})[it.id])a++;}
+    }
+  }
+  if(faltantes)return t-a;
+  return t?Math.round(a/t*100):null;
+}
+// ── Grupo: agregados por hotel y puntos que fallan en común ──
+const PROP_ABBR={MX051:'MV',MX056:'TA',MX061:'PV'};
+const PROP_NAME={MX051:'Monterrey Valle',MX056:'Tampico',MX061:'Puerto Vallarta'};
+function itemFails(list){
+  const m=new Map();
+  for(const ins of list){
+    for(const sec of SECTIONS){
+      if(sec.isLTR)continue;
+      const sets=HAB_SECTION_IDS.includes(sec.id)?(ins.habs||[]).map(h=>h.responses||{}):[ins.generalResponses||{}];
+      for(const r of sets) for(const it of sec.items){
+        if(r[it.id]==='no'){const e=m.get(it.id)||{name:it.name,sec:sec.title,urg:it.urg,n:0};e.n++;m.set(it.id,e);}
+      }
+    }
+  }
+  return m;
+}
+function hotelAgg(prop,modo){
+  const list=store.inspections.filter(i=>i.closed&&i.propiedad===prop&&i.modo===modo);
+  const last=[...list].sort((a,b)=>a.fecha.localeCompare(b.fecha)).slice(-10);
+  const scs=last.map(calcScore);
+  const avgOf=k=>{const v=scs.map(x=>x[k]).filter(x=>x!==null);return v.length?Math.round(v.reduce((a,b)=>a+b,0)/v.length):null;};
+  const cov=last.map(cobertura).filter(x=>x!==null);
+  return {prop,n:list.length,last,avg:avgOf('overall'),lastV:scs.length?scs[scs.length-1].overall:null,cl:avgOf('cl'),cnd:avgOf('cnd'),bs:avgOf('bs'),
+    cov:cov.length?Math.round(cov.reduce((a,b)=>a+b,0)/cov.length):null,items:itemFails(last)};
+}
+function groupBlock(modo,props){
+  const label=modo==='completo'?'📋 Inspección QAR':'🔍 Guardia Diaria';
+  const aggs=props.map(p=>hotelAgg(p,modo)).filter(a=>a.n>0);
+  const head=`<div style="font-family:var(--font-display);font-size:15px;font-weight:700;text-transform:uppercase;margin-bottom:10px">${label}</div>`;
+  if(!aggs.length) return `<div class="dash-block">${head}<div style="color:var(--fg-muted);font-size:12px">Sin inspecciones cerradas.</div></div>`;
+  const mean=k=>{const v=aggs.map(a=>a[k]).filter(x=>x!==null);return v.length?Math.round(v.reduce((x,y)=>x+y,0)/v.length):null;};
+  const g=mean('avg');
+  const pc=v=>v===null?'—':v+'%';
+  const bar=v=>`<span style="color:${scoreColor(v)};font-weight:700">${pc(v)}</span>`;
+  const rows=aggs.map(a=>`<tr><td style="padding:4px 6px"><b>${PROP_ABBR[a.prop]}</b> <span style="color:var(--fg-muted)">${PROP_NAME[a.prop]}</span></td><td>${bar(a.avg)}</td><td>${bar(a.lastV)}</td><td>${pc(a.cl)}</td><td>${pc(a.cnd)}</td><td>${pc(a.bs)}</td><td style="color:var(--fg-muted)">${pc(a.cov)}</td></tr>`).join('')
+    +`<tr style="border-top:2px solid var(--border);font-weight:700"><td style="padding:4px 6px">GRUPO</td><td>${bar(g)}</td><td>${bar(mean('lastV'))}</td><td>${pc(mean('cl'))}</td><td>${pc(mean('cnd'))}</td><td>${pc(mean('bs'))}</td><td style="color:var(--fg-muted)">${pc(mean('cov'))}</td></tr>`;
+  // puntos en común
+  const all=new Map();
+  for(const a of aggs) for(const [id,e] of a.items){const x=all.get(id)||{name:e.name,sec:e.sec,urg:e.urg,by:{},total:0};x.by[a.prop]=(x.by[a.prop]||0)+e.n;x.total+=e.n;all.set(id,x);}
+  const arr=[...all.values()].map(x=>({...x,h:Object.keys(x.by).length}));
+  const comunes=arr.filter(x=>x.h>=2).sort((a,b)=>b.h-a.h||b.total-a.total).slice(0,10);
+  const chips=x=>aggs.map(a=>`<span style="display:inline-block;min-width:34px;text-align:center;font-size:10px;padding:1px 4px;border-radius:8px;margin-left:3px;${x.by[a.prop]?'background:#C0392B;color:#fff':'background:var(--surface-2);color:var(--fg-muted)'}">${PROP_ABBR[a.prop]}${x.by[a.prop]?' '+x.by[a.prop]:''}</span>`).join('');
+  const comHtml=aggs.length<2?'<div style="font-size:11px;color:var(--fg-muted)">Se necesitan inspecciones de al menos 2 hoteles para comparar.</div>'
+    :comunes.length?comunes.map(x=>`<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:11px;padding:4px 0;border-bottom:1px solid var(--border)"><span style="min-width:0"><b>${x.name}</b><br><span style="color:var(--fg-muted)">${x.sec}</span></span><span style="white-space:nowrap">${chips(x)}</span></div>`).join('')
+    :'<div style="font-size:11px;color:var(--fg-muted)">Ningún punto falla en más de un hotel.</div>';
+  const sinComun=arr.filter(x=>x.h===1).sort((a,b)=>b.total-a.total).slice(0,3);
+  return `<div class="dash-block">${head}
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px">
+      <div class="dash-kpi-card" style="padding:9px 10px"><div class="dash-kpi-label">Score grupo</div><div class="dash-kpi-value" style="font-size:24px;color:${scoreColor(g)}">${pc(g)}</div></div>
+      <div class="dash-kpi-card" style="padding:9px 10px"><div class="dash-kpi-label">Mejor</div><div class="dash-kpi-value" style="font-size:20px">${(()=>{const b=[...aggs].filter(a=>a.avg!==null).sort((x,y)=>y.avg-x.avg)[0];return b?PROP_ABBR[b.prop]+' '+b.avg+'%':'—';})()}</div></div>
+      <div class="dash-kpi-card" style="padding:9px 10px"><div class="dash-kpi-label">Por mejorar</div><div class="dash-kpi-value" style="font-size:20px">${(()=>{const b=[...aggs].filter(a=>a.avg!==null).sort((x,y)=>x.avg-y.avg)[0];return b?PROP_ABBR[b.prop]+' '+b.avg+'%':'—';})()}</div></div>
+    </div>
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px;text-align:left"><thead><tr style="color:var(--fg-muted);font-size:9px;text-transform:uppercase"><th style="padding:4px 6px">Hotel</th><th>Prom.</th><th>Último</th><th>Limp.</th><th>Cond.</th><th>Brand</th><th>Cobert.</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--fg-muted);margin:12px 0 4px">Puntos que fallan en más de un hotel (últimas 10 por hotel)</div>
+    ${comHtml}
+    ${sinComun.length&&aggs.length>=2?`<div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--fg-muted);margin:12px 0 4px">Fallas más repetidas en un solo hotel</div>${sinComun.map(x=>`<div style="font-size:11px;padding:2px 0">${x.name} <span style="color:var(--fg-muted)">· ${PROP_ABBR[Object.keys(x.by)[0]]} ${x.total}</span></div>`).join('')}`:''}
+  </div>`;
+}
 let dashProp='ALL';
 function dashBlock(prop,modo){
   const list=store.inspections.filter(i=>i.closed&&i.propiedad===prop&&i.modo===modo);
@@ -2522,6 +2599,7 @@ function dashBlock(prop,modo){
       ${kpi('Cerradas',st.n)}${kpi(modo==='completo'?'Fallas auto':'Alertas',st.fails,st.fails>0?'var(--danger)':'var(--ok)')}
     </div>
     ${sparkSvg(st.sc)}
+    <div style="font-size:11px;color:var(--fg-muted);margin-top:4px">Cobertura promedio: <b>${(()=>{const c=st.last.map(cobertura).filter(x=>x!==null);return c.length?Math.round(c.reduce((a,b)=>a+b,0)/c.length)+'%':'—'})()}</b> de los puntos contestados</div>
     <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--fg-muted);margin:10px 0 4px">Secciones con más fallas (últimas 10)</div>
     ${top}
   </div>`;
@@ -2536,7 +2614,8 @@ function renderDashboard(){
   document.getElementById('dash-prop-tabs').innerHTML=[['ALL','Todos los hoteles'],...props.map(p=>[p,names[p]])]
     .map(([k,v])=>`<button class="dash-prop-tab${dashProp===k?' sel':''}" onclick="dashProp='${k}';renderDashboard()">${v}</button>`).join('');
   const show=dashProp==='ALL'?props:[dashProp];
-  document.getElementById('dash-body').innerHTML=show.map(p=>`
+  const grupo=(dashProp==='ALL'&&props.length>=2)?`<div class="dash-hotel" style="border-color:var(--pizarra)"><h2 style="font-family:var(--font-display);font-size:20px;font-weight:700;text-transform:uppercase;color:var(--grafito);margin-bottom:12px">Grupo Riberana <span style="font-size:12px;color:var(--fg-muted)">comparativo de ${props.length} hoteles</span></h2><div class="dash-blocks">${tipos.includes('qar')?groupBlock('completo',props):''}${tipos.includes('diaria')?groupBlock('diario',props):''}</div></div>`:'';
+  document.getElementById('dash-body').innerHTML=grupo+show.map(p=>`
     <div class="dash-hotel">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
         <h2 style="font-family:var(--font-display);font-size:20px;font-weight:700;text-transform:uppercase;flex:1;color:var(--grafito)">Comfort Inn ${names[p]} <span style="font-size:12px;color:var(--fg-muted)">${p}</span></h2>
@@ -2580,7 +2659,7 @@ async function buildDashboardPDF(prop,highlightId){
     y+=gh+6;
     // tabla de últimas inspecciones
     doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(90,90,90);
-    doc.text('Fecha',M,y);doc.text('Supervisor',M+26,y);doc.text('Score',M+90,y);doc.text('Hallazgos (No)',M+110,y);doc.text('BC',M+150,y);y+=3;
+    doc.text('Fecha',M,y);doc.text('Supervisor',M+26,y);doc.text('Score',M+90,y);doc.text('Hallazgos (No)',M+110,y);doc.text('Cobert.',M+138,y);doc.text('BC',M+160,y);y+=3;
     doc.setDrawColor(200,200,195);doc.line(M,y,PW-M,y);y+=4;
     doc.setFont('helvetica','normal');
     for(const x of [...st.sc].reverse()){
@@ -2588,7 +2667,7 @@ async function buildDashboardPDF(prop,highlightId){
       const nNo=Object.values(x.ins.generalResponses||{}).filter(v=>v==='no').length+(x.ins.habs||[]).reduce((a,h)=>a+Object.values(h.responses||{}).filter(v=>v==='no').length,0);
       const hi=x.ins.id===highlightId; if(hi){doc.setFillColor(240,235,215);doc.rect(M-1,y-3.5,CW+2,5.2,'F');}
       doc.setTextColor(40,40,40);doc.setFont('helvetica',hi?'bold':'normal');
-      doc.text(x.fecha,M,y);doc.text(String(x.ins.inspector||'—').slice(0,30),M+26,y);doc.text(x.v!==null?x.v+'%':'—',M+90,y);doc.text(String(nNo),M+110,y);doc.text(x.ins.published?'Sí':'—',M+150,y);
+      doc.text(x.fecha,M,y);doc.text(String(x.ins.inspector||'—').slice(0,30),M+26,y);doc.text(x.v!==null?x.v+'%':'—',M+90,y);doc.text(String(nNo),M+110,y);{const cv=cobertura(x.ins);doc.text(cv!==null?cv+'%':'—',M+138,y);}doc.text(x.ins.published?'Sí':'—',M+160,y);
       y+=5;
     }
     y+=2;
@@ -2809,6 +2888,7 @@ document.addEventListener('DOMContentLoaded',async ()=>{
   <div class="modal-box">
     <h3>¿Cerrar inspección?</h3>
     <p style="font-size:13px;color:var(--fg-muted)">Al cerrar, la inspección queda bloqueada (no se podrá editar) y se publicará automáticamente en Basecamp: una tarjeta con una subtarea por cada punto en “No”. Solo el administrador puede reabrirla si aún no se publicó.</p>
+    <div id="close-warn" style="display:none;margin-top:10px;padding:8px 10px;border-radius:6px;background:#FFF4D6;border:1px solid #D4A017;font-size:12px;color:#7a5a00"></div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="document.getElementById('modal-close').classList.add('hidden')">Cancelar</button>
       <button class="btn btn-ok" onclick="confirmClose()">✓ Cerrar y guardar</button>
