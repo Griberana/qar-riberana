@@ -18,10 +18,6 @@ module.exports = async (req, res) => {
   if (!process.env.BC_REFRESH_TOKEN) return res.status(503).json({ error: 'Basecamp aún no está autorizado (falta BC_REFRESH_TOKEN).' });
 
   try {
-    if (!(steps || []).length) {
-      await sb.from('inspections').update({ estado: 'publicada', published_at: new Date().toISOString() }).eq('id', id);
-      return res.json({ done: true, total: 0 });
-    }
     let cardId = ins.bc_card_id, url = ins.bc_url, done = ins.bc_steps_done || 0;
     if (!cardId) {
       const c = await bcFetch(`/buckets/${cfg.bucket}/card_tables/lists/${cfg.column}/cards.json`, 'POST', { title: String(card.title).slice(0, 250), content: card.content });

@@ -91,4 +91,14 @@ async function bcFetch(path, method, body) {
   throw new Error('Basecamp: demasiadas solicitudes, reintenta.');
 }
 
-module.exports = { sb, BC, ACCOUNT, hashPin, checkPin, signToken, readToken, auth, publicUser, canAccess, readBody, audit, bcFetch };
+async function bcUpload(name, buffer, contentType) {
+  const r = await fetch(`https://3.basecampapi.com/${ACCOUNT}/attachments.json?name=${encodeURIComponent(name)}`, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + (await bcToken()), 'Content-Type': contentType, 'Content-Length': String(buffer.length), 'User-Agent': 'QAR Riberana (' + (process.env.ADMIN_EMAIL || 'admin') + ')' },
+    body: buffer,
+  });
+  if (!r.ok) throw new Error(`Basecamp adjunto ${r.status}: ${(await r.text()).slice(0, 200)}`);
+  return (await r.json()).attachable_sgid;
+}
+
+module.exports = { bcUpload, sb, BC, ACCOUNT, hashPin, checkPin, signToken, readToken, auth, publicUser, canAccess, readBody, audit, bcFetch };

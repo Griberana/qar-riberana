@@ -75,6 +75,15 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--fg);font-size
 .hi-score.sc-mid{color:var(--warn);}
 .hi-score.sc-low{color:var(--danger);}
 .hi-actions{display:flex;gap:6px;}
+.hist-fold>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;font-family:var(--font-display);font-size:16px;font-weight:700;text-transform:uppercase;padding:6px 0;color:var(--fg-muted);}
+.hist-fold>summary::-webkit-details-marker{display:none;}
+.hist-fold>summary .arr{transition:transform .15s;display:inline-block;}
+.hist-fold[open]>summary .arr{transform:rotate(90deg);}
+.ini{width:30px;height:30px;border-radius:50%;background:var(--pizarra);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;letter-spacing:.02em;}
+.dash-hotel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:18px;margin-bottom:18px;}
+.dash-blocks{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:760px){.dash-blocks{grid-template-columns:1fr;}}
+.dash-block{border:1px solid var(--border);border-radius:var(--r-lg);padding:14px;background:var(--bg);min-width:0;}
 .hist-empty{text-align:center;padding:24px;color:var(--fg-muted);font-size:13px;
   background:var(--surface);border:1px dashed var(--border);border-radius:var(--r-lg);}
 
@@ -840,7 +849,7 @@ function renderHome(){
   // history
   const hl = document.getElementById('hist-list');
   const open = store.inspections.filter(i=>!i.closed);
-  const closed = store.inspections.filter(i=>i.closed).slice(0,15);
+  const closed = store.inspections.filter(i=>i.closed).slice(0,40);
   let html='';
   if(open.length){
     html+=`<div class="hist-title">BORRADORES — TOCA PARA REANUDAR</div><div class="hist-list">`;
@@ -848,9 +857,9 @@ function renderHome(){
     html+=`</div><div style="height:12px"></div>`;
   }
   if(closed.length){
-    html+=`<div class="hist-title">HISTORIAL</div><div class="hist-list">`;
+    html+=`<details class="hist-fold" ${window._histOpen?'open':''} ontoggle="window._histOpen=this.open"><summary><span class="arr">▸</span> HISTORIAL (${closed.length})</summary><div class="hist-list" style="margin-top:8px">`;
     closed.forEach(ins=>{ html+=histItem(ins,false); });
-    html+=`</div>`;
+    html+=`</div></details>`;
   }
   if(!open.length&&!closed.length){
     html=`<div class="hist-empty">📋 Aún no hay inspecciones registradas.<br>Crea tu primera revisión arriba.</div>`;
@@ -858,6 +867,11 @@ function renderHome(){
   hl.innerHTML=html;
 }
 
+function iniciales(n){
+  const w=String(n||'').trim().split(/\s+/).filter(Boolean);
+  if(!w.length)return '?';
+  return (w.length===1?w[0].slice(0,2):w[0][0]+w[w.length-1][0]).toUpperCase();
+}
 function histItem(ins,isOpen){
   const sc = calcScore(ins);
   const pct = sc.overall;
@@ -868,8 +882,9 @@ function histItem(ins,isOpen){
   const badge = ins.published ? `<span style="font-size:9px;background:#2e7d32;color:#fff;padding:1px 5px;border-radius:3px;margin-left:4px">✅ BC</span>`
     : ins.closed ? `<span style="font-size:9px;background:#D4A017;color:#fff;padding:1px 5px;border-radius:3px;margin-left:4px">🔒 Cerrada · sin publicar</span>`
     : `<span style="font-size:9px;background:#568294;color:#fff;padding:1px 5px;border-radius:3px;margin-left:4px">✏️ Borrador</span>`;
-  const autor = ins.userEmail && ins.userEmail!==(sesion&&sesion.email) ? ` · ${ins.inspector||ins.userEmail}` : '';
+  const autor = ` · ${ins.inspector||ins.userEmail||''}`;
   return `<div class="hist-item" onclick="openInspection('${ins.id}')">
+    <div class="ini" title="${(ins.inspector||ins.userEmail||'').replace(/"/g,'')}">${iniciales(ins.inspector||ins.userEmail)}</div>
     <div class="hist-dot" style="background:${dot}"></div>
     <div class="hi-info">
       <div class="hi-prop">${prop}${badge}</div>
@@ -1362,7 +1377,7 @@ function setCat(itemId, val, gen, habId){
   }
 }
 
-function compressImage(file,max=1000,q=0.65){
+function compressImage(file,max=720,q=0.5){
   return new Promise((ok,err)=>{
     const fr=new FileReader();
     fr.onload=()=>{const im=new Image();
@@ -1676,7 +1691,8 @@ RESUMEN: ${urgCount('critica')} CRÍTICAS · ${urgCount('alta')} ALTAS · ${urgC
       <div class="bc-body">
         <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:9px">
           <button class="btn btn-terracota" onclick="generatePDF()" style="background:var(--terracota);color:#fff;border-color:var(--terracota)">📄 Descargar PDF</button>
-          ${cur.modo==='diario'?`<button class="btn" onclick="generateMinuta()" style="background:var(--pizarra);color:#fff;border-color:var(--pizarra)">📋 Descargar Minuta</button>`:''}
+          <button class="btn" onclick="generateMinuta()" style="background:var(--pizarra);color:#fff;border-color:var(--pizarra)">📋 Descargar Minuta</button>
+          <button class="btn" onclick="descargarReporteFotos()" style="background:var(--pizarra);color:#fff;border-color:var(--pizarra)">📷 Reporte fotográfico</button>
           <button class="btn btn-secondary" onclick="exportInspection('${cur.id}')">💾 Descargar JSON</button>
         </div>
         ${(()=>{
@@ -1695,8 +1711,9 @@ RESUMEN: ${urgCount('critica')} CRÍTICAS · ${urgCount('alta')} ALTAS · ${urgC
             return catSummary + `<div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;display:flex;align-items:center;gap:10px">
               <span style="font-size:18px">✅</span>
               <div><div style="font-weight:600;color:var(--ok);font-size:13px">Publicado en Basecamp</div>
-              <div style="font-size:11px;color:var(--fg-muted)">${cur.bcUrl?`<a href="${cur.bcUrl}" target="_blank" rel="noopener">Abrir tarjeta en Basecamp</a>`:'Sin hallazgos pendientes.'}</div></div>
-            </div>`;
+              <div style="font-size:11px;color:var(--fg-muted)">${cur.bcUrl?`<a href="${cur.bcUrl}" target="_blank" rel="noopener">Abrir tarjeta en Basecamp</a>`:''}</div></div>
+            </div>
+            ${sesion&&sesion.esAdmin?`<button class="btn btn-secondary" style="width:100%;margin-top:8px;font-size:12px" onclick="reintentarReportes()">📎 Volver a subir minuta, fotos y dashboard (administrador)</button>`:''}`;
           } else if(cur.closed){
             return catSummary + `<div style="background:var(--surface-2);border:1px dashed var(--warn);border-radius:var(--r);padding:10px 14px">
               <div style="font-size:12px;color:var(--warn);margin-bottom:8px">🔒 Cerrada — pendiente de publicar en Basecamp.${cur.publishError?` <br><span style="color:var(--danger)">${cur.publishError}</span>`:''}</div>
@@ -1994,7 +2011,7 @@ async function generatePDF(){
         const canvas=document.createElement('canvas');
         canvas.width=300;canvas.height=Math.round(300*(img.naturalHeight/img.naturalWidth));
         const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,canvas.width,canvas.height);
-        const dataUrl=canvas.toDataURL('image/jpeg',0.7);
+        const dataUrl=canvas.toDataURL('image/jpeg',0.55);
         doc.addImage(dataUrl,'JPEG',x,y,imgW,imgH);
       }catch(e){
         // placeholder if image fails
@@ -2119,7 +2136,11 @@ async function publishToBasecamp(auto){
       if(!r.done) showToast(`Publicando en Basecamp… ${r.progress}/${r.total}`);
     }while(!r.done);
     cur.published=true; cur.estado='publicada'; cur.bcUrl=r.url||cur.bcUrl;
-    showToast(r.total===0?'✅ Sin hallazgos pendientes. Inspección cerrada.':`✅ Publicado en Basecamp: 1 tarjeta con ${r.total} subtarea(s).`);
+    showToast(r.total===0?'✅ Publicado en Basecamp (sin hallazgos). Subiendo reportes…':`✅ Publicado en Basecamp: ${r.total} subtarea(s). Subiendo reportes…`);
+    if(window.jspdf){
+      const errs=await subirReportes();
+      showToast(errs.length?'⚠️ Publicado, pero fallaron reportes: '+errs.join(' · '):'✅ Tarjeta, minuta, reporte fotográfico y dashboard publicados en Basecamp.');
+    }
   }catch(e){
     cur.publishError=e.message;
     showToast('⚠️ Cerrada, pero no se pudo publicar en Basecamp: '+e.message);
@@ -2127,9 +2148,9 @@ async function publishToBasecamp(auto){
   if(!auto) renderReport();
 }
 
-async function generateMinuta(){
-  if(!window.jspdf){showToast('Cargando librería PDF…');return;}
-  showToast('Generando Minuta de Guardia…');
+async function generateMinuta(opts={}){
+  if(!window.jspdf){if(!opts.returnBlob)showToast('Cargando librería PDF…');return null;}
+  if(!opts.returnBlob)showToast(cur.modo==='diario'?'Generando Minuta de Guardia…':'Generando Minuta de Inspección…');
   const {jsPDF} = window.jspdf;
   const doc = new jsPDF({orientation:'landscape',unit:'mm',format:'letter'});
   const W=279.4, H=215.9;
@@ -2155,7 +2176,7 @@ async function generateMinuta(){
   doc.setFillColor(84,89,89);
   doc.rect(0,0,W,22,'F');
   doc.setFontSize(16);doc.setFont('helvetica','bold');doc.setTextColor(255,255,255);
-  doc.text('MINUTA DE GUARDIA DIARIA QAR',marginL,13);
+  doc.text(cur.modo==='diario'?'MINUTA DE GUARDIA DIARIA QAR':'MINUTA DE INSPECCIÓN QAR',marginL,13);
   doc.setFontSize(9);doc.setFont('helvetica','normal');
   doc.text(`${prop}  ·  ${cur.fecha}  ·  Supervisor: ${cur.inspector||'—'}  ·  ${modoLabel}`,marginL,19);
   y=30;
@@ -2302,7 +2323,7 @@ async function generateMinuta(){
   if(rows.length===0){
     checkPage(10);
     doc.setFontSize(11);doc.setTextColor(61,138,91);
-    doc.text('✓ Sin pendientes registrados en esta guardia.',marginL,y+8);
+    doc.text('✓ Sin pendientes registrados.',marginL,y+8);
     y+=14;
   }
 
@@ -2320,13 +2341,13 @@ async function generateMinuta(){
       const px=marginL+(col*(cellW+4));
       try{
         const canvas=document.createElement('canvas');
-        const img2=new Image();img2.src=ph.src;
+        const img2=new Image();img2.crossOrigin='anonymous';img2.src=ph.src;
         await new Promise(r=>{img2.onload=r;img2.onerror=r;});
         const scale=Math.min(300/img2.naturalWidth,1);
         canvas.width=Math.round(img2.naturalWidth*scale);
         canvas.height=Math.round(img2.naturalHeight*scale);
         const ctx=canvas.getContext('2d');ctx.drawImage(img2,0,0,canvas.width,canvas.height);
-        const data=canvas.toDataURL('image/jpeg',0.7);
+        const data=canvas.toDataURL('image/jpeg',0.55);
         const aspect=canvas.height/canvas.width;
         const drawH=Math.min(imgH,cellW*aspect);
         doc.addImage(data,'JPEG',px,y,cellW,drawH);
@@ -2345,13 +2366,14 @@ async function generateMinuta(){
   }
 
   addFooter();
+  if(opts.returnBlob) return {filename:`Minuta_${cur.modo==='diario'?'Guardia':'QAR'}_${cur.propiedad}_${cur.fecha}.pdf`, blob:new Blob([doc.output('arraybuffer')],{type:'application/pdf'})};
 
   // ── Download ──
   try{
     const dl=await claude.use('downloads');
     if(dl){
       const arr=doc.output('arraybuffer');
-      await dl.save({filename:`Minuta_QAR_${cur.propiedad}_${cur.fecha}.pdf`,data:new Blob([arr],{type:'application/pdf'})});
+      await dl.save({filename:`Minuta_${cur.modo==='diario'?'Guardia':'QAR'}_${cur.propiedad}_${cur.fecha}.pdf`,data:new Blob([arr],{type:'application/pdf'})});
       return;
     }
   }catch(e){}
@@ -2360,6 +2382,255 @@ async function generateMinuta(){
     showToast('Minuta generada.');
     const w=window.open();if(w){w.document.write(`<iframe src="${dataUri}" style="width:100%;height:100%;border:none"></iframe>`);}
   }catch(e){showToast('Error al generar minuta.');}
+}
+
+
+// ══════════════════════════════════════════════════════════
+//  REPORTES PDF → BASECAMP
+// ══════════════════════════════════════════════════════════
+const _fotoCache={};
+async function fotoData(src,max=420,q=0.55){
+  if(_fotoCache[src])return _fotoCache[src];
+  try{
+    const img=await new Promise((res,rej)=>{const im=new Image();im.crossOrigin='anonymous';im.onload=()=>res(im);im.onerror=rej;im.src=src;});
+    const k=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight));
+    const c=document.createElement('canvas');c.width=Math.round(img.naturalWidth*k);c.height=Math.round(img.naturalHeight*k);
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    return _fotoCache[src]={d:c.toDataURL('image/jpeg',q),w:c.width,h:c.height};
+  }catch(e){return null;}
+}
+function collectPendientes(){
+  const genR=cur.generalResponses||cur.habs[0]?.responses||{}, genN=cur.generalNotas||{}, genF=cur.generalFotos||{};
+  const out=[];
+  for(const sec of getVisibleSections()){
+    if(sec.isLTR)continue;
+    const items=getSectionItems(sec);
+    if(!isHabSection(sec.id)){
+      for(const it of items){ if(it.esNota)continue;
+        if((genR[it.id]||'')==='no') out.push({item:it,sec:sec.title,hab:'General',nota:genN[it.id]||'',fotos:genF[it.id]||[]}); }
+    } else {
+      for(const h of cur.habs) for(const it of items){ if(it.esNota)continue;
+        if((h.responses[it.id]||'')==='no') out.push({item:it,sec:sec.title,hab:`Hab. ${h.num||h.id}`,nota:h.notas[it.id]||'',fotos:h.fotos[it.id]||[]}); }
+    }
+  }
+  const o={critica:0,alta:1,media:2,baja:3};
+  return out.sort((a,b)=>(o[a.item.urg]??9)-(o[b.item.urg]??9));
+}
+async function buildFotoReport(){
+  if(!window.jspdf)return null;
+  const {jsPDF}=window.jspdf; const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'letter'});
+  const PW=215.9,PH=279.4,M=14,CW=PW-2*M;
+  const prop=PROPIEDADES[cur.propiedad]?.nombre||cur.propiedad;
+  const tipo=cur.modo==='diario'?'Guardia Diaria':'Inspección QAR';
+  const pend=collectPendientes();
+  let y=0,pg=1;
+  const footer=()=>{doc.setFontSize(8);doc.setTextColor(140,140,140);doc.setFont('helvetica','normal');doc.text(`Grupo Riberana · ${prop} · ${cur.fecha} · Pág. ${pg}`,PW/2,PH-6,{align:'center'});};
+  const need=(h)=>{ if(y+h>PH-14){footer();doc.addPage();pg++;y=16;} };
+  doc.setFillColor(84,89,89);doc.rect(0,0,PW,22,'F');
+  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(15);doc.text('REPORTE FOTOGRÁFICO DE DEFICIENCIAS',M,12);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);
+  doc.text(`${prop} · ${tipo} · ${cur.fecha} · Supervisor: ${cur.inspector||'—'}`,M,18);
+  y=30;
+  if(!pend.length){doc.setTextColor(61,138,91);doc.setFontSize(12);doc.text('✓ Sin deficiencias registradas.',M,y+6);footer();return {filename:`Reporte_Fotografico_${cur.propiedad}_${cur.fecha}.pdf`,blob:doc.output('blob')};}
+  const urg={critica:'CRÍTICA',alta:'ALTA',media:'MEDIA',baja:'BAJA'};
+  const col={critica:[192,57,43],alta:[217,119,6],media:[212,160,23],baja:[61,138,91]};
+  let n=0;
+  for(const p of pend){
+    n++;
+    const nota=doc.splitTextToSize(p.nota?('Nota: '+p.nota):'',CW-4);
+    const hasF=p.fotos.length>0;
+    need(14+nota.length*4+(hasF?46:6));
+    const c=col[p.item.urg]||[100,100,100];
+    doc.setFillColor(...c);doc.roundedRect(M,y,18,5.5,1,1,'F');
+    doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(7);doc.text(urg[p.item.urg]||'',M+9,y+3.8,{align:'center'});
+    doc.setTextColor(40,40,40);doc.setFontSize(9.5);
+    const tl=doc.splitTextToSize(`${n}. ${p.item.name}`,CW-22);
+    doc.text(tl,M+21,y+4);
+    y+=Math.max(7,tl.length*4.2+3);
+    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(110,110,110);
+    doc.text(`${p.sec} · ${p.hab}`,M,y);y+=4;
+    if(nota.length&&nota[0]){doc.setTextColor(60,60,60);doc.text(nota,M,y);y+=nota.length*4;}
+    if(hasF){
+      const cw=(CW-8)/3,ch=40;let x=M;
+      for(let i=0;i<p.fotos.length;i++){
+        if(i>0&&i%3===0){y+=ch+3;need(ch+4);x=M;}
+        const f=await fotoData(p.fotos[i]);
+        if(f){const k=Math.min(cw/f.w,ch/f.h);const w=f.w*k,h=f.h*k;doc.addImage(f.d,'JPEG',x,y,w,h);}
+        else{doc.setFillColor(225,225,225);doc.rect(x,y,cw,ch,'F');doc.setFontSize(7);doc.setTextColor(150,150,150);doc.text('Imagen no disponible',x+cw/2,y+ch/2,{align:'center'});}
+        x+=cw+4;
+      }
+      y+=ch+4;
+    } else { doc.setFontSize(8);doc.setTextColor(150,150,150);doc.text('Sin fotografía',M,y+1);y+=5; }
+    doc.setDrawColor(220,220,215);doc.line(M,y,PW-M,y);y+=5;
+  }
+  footer();
+  return {filename:`Reporte_Fotografico_${cur.propiedad}_${cur.fecha}.pdf`,blob:doc.output('blob')};
+}
+async function descargarReporteFotos(){
+  showToast('Generando reporte fotográfico…');
+  const f=await buildFotoReport(); if(!f){showToast('Cargando librería PDF…');return;}
+  const dl=await claude.use('downloads'); await dl.save({filename:f.filename,data:f.blob});
+}
+
+// ── Dashboard: estadísticas ──
+const PROP_LIST=['MX051','MX056','MX061'];
+function secFailCounts(list){
+  const m={};
+  for(const ins of list){
+    for(const sec of SECTIONS){
+      if(sec.isLTR)continue;
+      const sets=HAB_SECTION_IDS.includes(sec.id)?(ins.habs||[]).map(h=>h.responses||{}):[ins.generalResponses||{}];
+      for(const r of sets) for(const it of sec.items){ if(r[it.id]==='no') m[sec.title]=(m[sec.title]||0)+1; }
+    }
+  }
+  return Object.entries(m).sort((a,b)=>b[1]-a[1]);
+}
+function dashStats(list,modo){
+  const last=[...list].sort((a,b)=>a.fecha.localeCompare(b.fecha)).slice(-10);
+  const sc=last.map(i=>({fecha:i.fecha,v:calcScore(i).overall,ins:i}));
+  const vals=sc.map(x=>x.v).filter(v=>v!==null);
+  const fails=last.filter(i=>modo==='completo'?calcScore(i).autoFail:calcScore(i).alertaSenal).length;
+  return {n:list.length,last,sc,vals,
+    avg:vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):null,
+    lastV:vals.length?vals[vals.length-1]:null, fails, top:secFailCounts(last).slice(0,5)};
+}
+function sparkSvg(sc){
+  const pts=sc.filter(x=>x.v!==null);
+  if(pts.length<1) return '<div style="color:var(--fg-muted);font-size:12px;padding:14px 0;text-align:center">Sin inspecciones cerradas.</div>';
+  const W=320,H=96,PL=24,PR=8,PT=8,PB=18,cw=W-PL-PR,ch=H-PT-PB;
+  const X=i=>PL+(pts.length===1?cw/2:i*cw/(pts.length-1)), Y=v=>PT+ch-(v/100)*ch;
+  let g='';
+  [[70,'#D4A017'],[85,'#3D8A5B']].forEach(([v,c])=>{g+=`<line x1="${PL}" x2="${W-PR}" y1="${Y(v)}" y2="${Y(v)}" stroke="${c}" stroke-dasharray="3 3" stroke-width=".8" opacity=".6"/><text x="${PL-3}" y="${Y(v)+3}" font-size="8" fill="#888" text-anchor="end">${v}</text>`;});
+  const line=pts.map((p,i)=>`${X(i)},${Y(p.v)}`).join(' ');
+  const dots=pts.map((p,i)=>`<circle cx="${X(i)}" cy="${Y(p.v)}" r="3.2" fill="${p.v>=85?'#3D8A5B':p.v>=70?'#D4A017':'#C0392B'}"/>`).join('');
+  const l1=pts[0].fecha.slice(5),l2=pts[pts.length-1].fecha.slice(5);
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">${g}${pts.length>1?`<polyline points="${line}" fill="none" stroke="#568294" stroke-width="1.8"/>`:''}${dots}<text x="${PL}" y="${H-4}" font-size="8" fill="#888">${l1}</text><text x="${W-PR}" y="${H-4}" font-size="8" fill="#888" text-anchor="end">${l2}</text></svg>`;
+}
+let dashProp='ALL';
+function dashBlock(prop,modo){
+  const list=store.inspections.filter(i=>i.closed&&i.propiedad===prop&&i.modo===modo);
+  const st=dashStats(list,modo);
+  const label=modo==='completo'?'📋 Inspección QAR':'🔍 Guardia Diaria';
+  const kpi=(l,v,c)=>`<div class="dash-kpi-card" style="padding:9px 10px"><div class="dash-kpi-label">${l}</div><div class="dash-kpi-value" style="font-size:22px;color:${c||'var(--fg)'}">${v}</div></div>`;
+  const top=st.top.length?st.top.map(([n,c])=>`<div style="display:flex;justify-content:space-between;gap:8px;font-size:11px;padding:2px 0;border-bottom:1px solid var(--border)"><span style="min-width:0">${n}</span><strong>${c}</strong></div>`).join(''):'<div style="font-size:11px;color:var(--fg-muted)">Sin fallas registradas.</div>';
+  return `<div class="dash-block">
+    <div style="font-family:var(--font-display);font-size:15px;font-weight:700;text-transform:uppercase;margin-bottom:10px">${label}</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px">
+      ${kpi('Promedio',st.avg!==null?st.avg+'%':'—',scoreColor(st.avg))}${kpi('Último',st.lastV!==null?st.lastV+'%':'—',scoreColor(st.lastV))}
+      ${kpi('Cerradas',st.n)}${kpi(modo==='completo'?'Fallas auto':'Alertas',st.fails,st.fails>0?'var(--danger)':'var(--ok)')}
+    </div>
+    ${sparkSvg(st.sc)}
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--fg-muted);margin:10px 0 4px">Secciones con más fallas (últimas 10)</div>
+    ${top}
+  </div>`;
+}
+function renderDashboard(){
+  showScreen('screen-dashboard');
+  const allProps=sesion&&(sesion.esAdmin||(sesion.hoteles||[]).includes('ALL'));
+  const props=PROP_LIST.filter(p=>allProps||(sesion.hoteles||[]).includes(p));
+  const tipos=sesion&&sesion.esAdmin?['qar','diaria']:(sesion&&sesion.tipos)||[];
+  if(dashProp!=='ALL'&&!props.includes(dashProp)) dashProp='ALL';
+  const names={MX051:'Monterrey Valle',MX056:'Tampico',MX061:'Puerto Vallarta'};
+  document.getElementById('dash-prop-tabs').innerHTML=[['ALL','Todos los hoteles'],...props.map(p=>[p,names[p]])]
+    .map(([k,v])=>`<button class="dash-prop-tab${dashProp===k?' sel':''}" onclick="dashProp='${k}';renderDashboard()">${v}</button>`).join('');
+  const show=dashProp==='ALL'?props:[dashProp];
+  document.getElementById('dash-body').innerHTML=show.map(p=>`
+    <div class="dash-hotel">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        <h2 style="font-family:var(--font-display);font-size:20px;font-weight:700;text-transform:uppercase;flex:1;color:var(--grafito)">Comfort Inn ${names[p]} <span style="font-size:12px;color:var(--fg-muted)">${p}</span></h2>
+        <button class="btn btn-secondary btn-sm" onclick="publicarReporteDashboard('${p}')">📎 Publicar reporte en Basecamp</button>
+      </div>
+      <div class="dash-blocks">${tipos.includes('qar')?dashBlock(p,'completo'):''}${tipos.includes('diaria')?dashBlock(p,'diario'):''}</div>
+    </div>`).join('')||'<div class="hist-empty">No tienes hoteles asignados.</div>';
+}
+
+async function buildDashboardPDF(prop,highlightId){
+  if(!window.jspdf)return null;
+  const {jsPDF}=window.jspdf; const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'letter'});
+  const PW=215.9,PH=279.4,M=14,CW=PW-2*M;
+  const names={MX051:'Comfort Inn Monterrey Valle',MX056:'Comfort Inn Tampico',MX061:'Comfort Inn Puerto Vallarta'};
+  const hoy=new Date().toISOString().slice(0,10);
+  doc.setFillColor(84,89,89);doc.rect(0,0,PW,22,'F');
+  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(15);doc.text('REPORTE DASHBOARD QAR',M,12);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(`${names[prop]||prop} · generado ${hoy}`,M,18);
+  let y=30;
+  const need=h=>{if(y+h>PH-14){doc.addPage();y=16;}};
+  const bloques=[['completo','INSPECCIÓN QAR'],['diario','GUARDIA DIARIA']];
+  for(const [modo,titulo] of bloques){
+    const list=store.inspections.filter(i=>i.closed&&i.propiedad===prop&&i.modo===modo);
+    const st=dashStats(list,modo);
+    need(70);
+    doc.setFillColor(86,130,148);doc.rect(M,y,CW,7,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text(titulo,M+2,y+5);y+=11;
+    doc.setTextColor(40,40,40);doc.setFontSize(9);doc.setFont('helvetica','normal');
+    doc.text(`Cerradas: ${st.n}    Promedio (últimas 10): ${st.avg!==null?st.avg+'%':'—'}    Último: ${st.lastV!==null?st.lastV+'%':'—'}    ${modo==='completo'?'Fallas automáticas':'Alertas de señalización'}: ${st.fails}`,M,y);y+=6;
+    // gráfica de tendencia
+    const pts=st.sc.filter(x=>x.v!==null);
+    const gx=M+8,gw=CW-10,gh=34;
+    doc.setDrawColor(200,200,195);doc.rect(gx,y,gw,gh);
+    [[70,[212,160,23]],[85,[61,138,91]]].forEach(([v,c])=>{const yy=y+gh-(v/100)*gh;doc.setDrawColor(...c);doc.setLineDashPattern([1.2,1.2],0);doc.line(gx,yy,gx+gw,yy);doc.setLineDashPattern([],0);doc.setFontSize(6.5);doc.setTextColor(120,120,120);doc.text(String(v),gx-2,yy+1.5,{align:'right'});});
+    if(pts.length){
+      const X=i=>gx+(pts.length===1?gw/2:i*gw/(pts.length-1)), Y=v=>y+gh-(v/100)*gh;
+      doc.setDrawColor(86,130,148);doc.setLineWidth(.5);
+      for(let i=1;i<pts.length;i++)doc.line(X(i-1),Y(pts[i-1].v),X(i),Y(pts[i].v));
+      doc.setLineWidth(.2);
+      pts.forEach((q,i)=>{const c=q.v>=85?[61,138,91]:q.v>=70?[212,160,23]:[192,57,43];doc.setFillColor(...c);doc.circle(X(i),Y(q.v),1.3,'F');});
+    } else {doc.setFontSize(8);doc.setTextColor(150,150,150);doc.text('Sin inspecciones cerradas',gx+gw/2,y+gh/2,{align:'center'});}
+    y+=gh+6;
+    // tabla de últimas inspecciones
+    doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(90,90,90);
+    doc.text('Fecha',M,y);doc.text('Supervisor',M+26,y);doc.text('Score',M+90,y);doc.text('Hallazgos (No)',M+110,y);doc.text('BC',M+150,y);y+=3;
+    doc.setDrawColor(200,200,195);doc.line(M,y,PW-M,y);y+=4;
+    doc.setFont('helvetica','normal');
+    for(const x of [...st.sc].reverse()){
+      need(6);
+      const nNo=Object.values(x.ins.generalResponses||{}).filter(v=>v==='no').length+(x.ins.habs||[]).reduce((a,h)=>a+Object.values(h.responses||{}).filter(v=>v==='no').length,0);
+      const hi=x.ins.id===highlightId; if(hi){doc.setFillColor(240,235,215);doc.rect(M-1,y-3.5,CW+2,5.2,'F');}
+      doc.setTextColor(40,40,40);doc.setFont('helvetica',hi?'bold':'normal');
+      doc.text(x.fecha,M,y);doc.text(String(x.ins.inspector||'—').slice(0,30),M+26,y);doc.text(x.v!==null?x.v+'%':'—',M+90,y);doc.text(String(nNo),M+110,y);doc.text(x.ins.published?'Sí':'—',M+150,y);
+      y+=5;
+    }
+    y+=2;
+    if(st.top.length){
+      need(10+st.top.length*5);
+      doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(90,90,90);doc.text('SECCIONES CON MÁS FALLAS (últimas 10)',M,y);y+=5;
+      doc.setFont('helvetica','normal');doc.setTextColor(40,40,40);
+      for(const [n,c] of st.top){doc.text(n,M+2,y);doc.text(String(c),M+110,y);y+=4.6;}
+    }
+    y+=8;
+  }
+  doc.setFontSize(8);doc.setTextColor(140,140,140);doc.text('Grupo Riberana · Sistema QAR',PW/2,PH-6,{align:'center'});
+  return {filename:`Dashboard_QAR_${prop}_${hoy}.pdf`,blob:doc.output('blob')};
+}
+function pdfToBase64(blob){return new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(String(fr.result).split(',')[1]);fr.readAsDataURL(blob);});}
+async function subirPdf(file,query,nota){
+  return api('attach?'+query,{method:'POST',body:{name:file.filename,base64:await pdfToBase64(file.blob),nota}});
+}
+async function subirReportes(){
+  const errs=[];
+  const jobs=[
+    ['Minuta',()=>generateMinuta({returnBlob:true}),cur.modo==='diario'?'📋 Minuta de la guardia':'📋 Minuta de la inspección'],
+    ['Reporte fotográfico',()=>buildFotoReport(),'📷 Reporte fotográfico de deficiencias'],
+    ['Reporte dashboard',()=>buildDashboardPDF(cur.propiedad,cur.id),'📊 Reporte dashboard del hotel'],
+  ];
+  for(const [n,fn,nota] of jobs){
+    try{ const f=await fn(); if(f) await subirPdf(f,'id='+cur.id,nota); else errs.push(n+': no se pudo generar'); }
+    catch(e){ errs.push(n+': '+e.message); }
+  }
+  return errs;
+}
+async function reintentarReportes(){
+  showToast('Generando y subiendo reportes…');
+  const errs=await subirReportes();
+  showToast(errs.length?'⚠️ '+errs.join(' · '):'✅ Reportes adjuntos en la tarjeta de Basecamp.');
+}
+async function publicarReporteDashboard(prop){
+  showToast('Generando reporte dashboard…');
+  try{
+    const f=await buildDashboardPDF(prop,null); if(!f){showToast('Cargando librería PDF…');return;}
+    const hoy=new Date().toISOString().slice(0,10);
+    await subirPdf(f,'propiedad='+prop+'&title='+encodeURIComponent(`📊 Reporte Dashboard ${prop} — ${hoy}`),'📊 Reporte consolidado de inspecciones');
+    showToast('✅ Reporte publicado en Basecamp (tarjeta nueva en la columna del hotel).');
+  }catch(e){showToast('No se pudo publicar: '+e.message);}
 }
 
 // ══════════════════════════════════════════════════════════
@@ -2693,33 +2964,13 @@ document.addEventListener('DOMContentLoaded',async ()=>{
 
 <!-- ─── SCREEN: DASHBOARD ─── -->
 <div class="screen" id="screen-dashboard" style="flex-direction:column;align-items:center;padding:24px 16px 80px;">
-  <div style="width:100%;max-width:760px">
-    <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap">
+  <div style="width:100%;max-width:1000px">
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px;flex-wrap:wrap">
       <button class="btn btn-secondary btn-sm" onclick="renderHome()">← Inicio</button>
-      <h1 style="font-family:var(--font-display);font-size:26px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--grafito);flex:1">Dashboard QAR</h1>
-      <div style="display:flex;gap:6px" id="dash-prop-tabs"></div>
+      <h1 style="font-family:var(--font-display);font-size:26px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--grafito);flex:1">Dashboard</h1>
     </div>
-
-    <!-- KPI row -->
-    <div id="dash-kpi-row" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px"></div>
-
-    <!-- Score trend chart -->
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;margin-bottom:16px">
-      <div style="font-family:var(--font-display);font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:14px;color:var(--fg-muted)">Score QAR histórico</div>
-      <div id="dash-chart" style="position:relative;height:160px;overflow:hidden"></div>
-    </div>
-
-    <!-- Two-column: ranking + section KPIs -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px">
-        <div style="font-family:var(--font-display);font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:12px;color:var(--fg-muted)">Secciones con más fallas</div>
-        <div id="dash-ranking"></div>
-      </div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px">
-        <div style="font-family:var(--font-display);font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:12px;color:var(--fg-muted)">KPI por sección</div>
-        <div id="dash-section-kpi"></div>
-      </div>
-    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px" id="dash-prop-tabs"></div>
+    <div id="dash-body"></div>
   </div>
 </div>
 
@@ -2817,188 +3068,6 @@ document.addEventListener('DOMContentLoaded',async ()=>{
 // ══════════════════════════════════════════════════════════
 //  DASHBOARD
 // ══════════════════════════════════════════════════════════
-let dashProp = 'ALL';
-let dashModo = 'completo';
-
-function renderDashboard(){
-  showScreen('screen-dashboard');
-  // Build property tabs
-  const tabs = document.getElementById('dash-prop-tabs');
-  const propOpts = [['ALL','Todas'],['MX051','Monterrey'],['MX056','Tampico'],['MX061','Pto. Vallarta']];
-  const ttl=document.querySelector('#screen-dashboard h1');
-  if(ttl) ttl.textContent = dashModo==='completo'?'Dashboard · Inspección QAR':'Dashboard · Guardias Diarias';
-  let modoTabs=document.getElementById('dash-modo-tabs');
-  if(!modoTabs){ modoTabs=document.createElement('div'); modoTabs.id='dash-modo-tabs'; modoTabs.style.cssText='display:flex;gap:6px;width:100%;margin-bottom:14px'; tabs.parentElement.parentElement.insertBefore(modoTabs,tabs.parentElement.nextSibling); }
-  modoTabs.innerHTML=[['completo','📋 Inspección QAR','qar'],['diario','🔍 Guardia Diaria','diaria']].filter(m=>tiposOk.includes(m[2])).map(([k,v])=>`<button class="dash-prop-tab${dashModo===k?' sel':''}" onclick="dashModo='${k}';renderDashboard()">${v}</button>`).join('');
-  const allowedProps = sesion&&(sesion.esAdmin||(sesion.hoteles||[]).includes('ALL')) ? null : (sesion&&sesion.hoteles)||[];
-  tabs.innerHTML = propOpts.filter(([k])=>!allowedProps||k==='ALL'||allowedProps.includes(k)).map(([k,v])=>
-    `<button class="dash-prop-tab${dashProp===k?' sel':''}" onclick="dashProp='${k}';renderDashboard()">${v}</button>`
-  ).join('');
-
-  // Get inspections for selected property (closed only for history)
-  const tiposOk = sesion&&sesion.esAdmin ? ['qar','diaria'] : (sesion&&sesion.tipos)||[];
-  if(dashModo==='completo'&&!tiposOk.includes('qar')&&tiposOk.includes('diaria')) dashModo='diario';
-  if(dashModo==='diario'&&!tiposOk.includes('diaria')&&tiposOk.includes('qar')) dashModo='completo';
-  const allIns = store.inspections.filter(i=>i.closed && i.modo===dashModo);
-  const ins = dashProp==='ALL' ? allIns : allIns.filter(i=>i.propiedad===dashProp);
-  const sorted = [...ins].sort((a,b)=>a.fecha.localeCompare(b.fecha));
-  const last = sorted.slice(-10);
-
-  // KPI row
-  const scores = last.map(i=>calcScore(i).overall).filter(v=>v!==null);
-  const avgScore = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : null;
-  const lastScore = scores.length ? scores[scores.length-1] : null;
-  const fails = last.filter(i=>dashModo==='completo'?calcScore(i).autoFail:calcScore(i).alertaSenal).length;
-  const kpiRow = document.getElementById('dash-kpi-row');
-  kpiRow.innerHTML = [
-    ['Score promedio', avgScore!==null?avgScore+'%':'—', last.length+' rev.', scoreColor(avgScore)],
-    ['Último score', lastScore!==null?lastScore+'%':'—', last.length?last[last.length-1].fecha:'', scoreColor(lastScore)],
-    ['Revisiones', last.length, dashProp==='ALL'?'Todas las propiedades':dashProp, 'var(--pizarra)'],
-    [dashModo==='completo'?'Fallas auto':'Alertas señalización', fails, 'en período analizado', fails>0?'var(--danger)':'var(--ok)'],
-  ].map(([label,val,sub,color])=>`
-    <div class="dash-kpi-card">
-      <div class="dash-kpi-label">${label}</div>
-      <div class="dash-kpi-value" style="color:${color||'var(--fg)'}">${val}</div>
-      <div class="dash-kpi-sub">${sub}</div>
-    </div>`).join('');
-
-  // Trend chart (inline SVG)
-  const chartDiv = document.getElementById('dash-chart');
-  if(last.length<2){
-    chartDiv.innerHTML=`<div style="color:var(--fg-muted);font-size:13px;padding:20px 0;text-align:center">Se necesitan al menos 2 inspecciones cerradas para mostrar la tendencia.</div>`;
-  } else {
-    const W=700, H=140, PL=36, PR=12, PT=10, PB=30;
-    const cw=W-PL-PR, ch=H-PT-PB;
-    const pts = last.map(i=>calcScore(i).overall).filter(v=>v!==null);
-    const labels = last.map(i=>i.fecha.slice(5)); // MM-DD
-    const minV=Math.max(0,Math.min(...pts)-10), maxV=Math.min(100,Math.max(...pts)+5);
-    const range=maxV-minV||1;
-    const xStep = cw/(pts.length-1);
-    const toX = i=>PL+i*xStep;
-    const toY = v=>PT+ch-(v-minV)/range*ch;
-    // Grid lines
-    let svgLines='';
-    [0,25,50,75,100].filter(g=>g>=minV&&g<=maxV).forEach(g=>{
-      const gy=toY(g);
-      svgLines+=`<line x1="${PL}" y1="${gy}" x2="${W-PR}" y2="${gy}" stroke="var(--border)" stroke-width="1" stroke-dasharray="4,3"/>
-      <text x="${PL-4}" y="${gy+4}" fill="var(--fg-muted)" font-size="9" text-anchor="end">${g}</text>`;
-    });
-    // Line path
-    const pathD = pts.map((v,i)=>`${i===0?'M':'L'}${toX(i)},${toY(v)}`).join(' ');
-    const areaD = pathD+` L${toX(pts.length-1)},${H-PB} L${PL},${H-PB} Z`;
-    // Dots + labels
-    let dotsSvg='';
-    pts.forEach((v,i)=>{
-      const x=toX(i), y=toY(v);
-      const col = v>=85?'#3D8A5B':v>=70?'#D4A017':'#C0392B';
-      dotsSvg+=`<circle cx="${x}" cy="${y}" r="4" fill="${col}" stroke="var(--surface)" stroke-width="2"/>`;
-      if(i===0||i===pts.length-1||pts.length<=6)
-        dotsSvg+=`<text x="${x}" y="${y-8}" fill="${col}" font-size="9" text-anchor="middle" font-weight="600">${v}%</text>`;
-      // x labels
-      if(i===0||i===pts.length-1||pts.length<=5)
-        dotsSvg+=`<text x="${x}" y="${H-2}" fill="var(--fg-muted)" font-size="9" text-anchor="middle">${labels[i]}</text>`;
-    });
-    chartDiv.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" height="160" preserveAspectRatio="xMidYMid meet">
-      <defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="var(--pizarra)" stop-opacity=".25"/>
-        <stop offset="100%" stop-color="var(--pizarra)" stop-opacity="0"/>
-      </linearGradient></defs>
-      ${svgLines}
-      <path d="${areaD}" fill="url(#ag)"/>
-      <path d="${pathD}" fill="none" stroke="var(--pizarra)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-      ${dotsSvg}
-    </svg>`;
-  }
-
-  // Section failure ranking
-  const secFails = {};
-  const secTotals = {};
-  for(const i of last){
-    const genR=i.generalResponses||{};
-    for(const sec of SECTIONS){
-      if(['auto_fail','ltr'].includes(sec.id)) continue;
-      const isHab=HAB_SECTION_IDS.includes(sec.id);
-      for(const item of sec.items){
-        if(item.esNota) continue;
-        const key=sec.id;
-        secTotals[key]=(secTotals[key]||0);
-        secFails[key]=(secFails[key]||0);
-        if(isHab){
-          for(const h of i.habs){
-            const r=h.responses[item.id];
-            if(r&&r!=='na'){secTotals[key]++;if(r==='no')secFails[key]++;}
-          }
-        } else {
-          const r=genR[item.id];
-          if(r&&r!=='na'){secTotals[key]++;if(r==='no')secFails[key]++;}
-        }
-      }
-    }
-  }
-  const ranking = Object.entries(secFails)
-    .map(([sid,fails])=>({sid,fails,total:secTotals[sid]||0,pct:secTotals[sid]?Math.round(fails/secTotals[sid]*100):0}))
-    .filter(r=>r.total>0&&r.fails>0)
-    .sort((a,b)=>b.pct-a.pct)
-    .slice(0,8);
-  const secMap = Object.fromEntries(SECTIONS.map(s=>[s.id,s.title]));
-  const rankDiv = document.getElementById('dash-ranking');
-  if(!ranking.length){
-    rankDiv.innerHTML=`<div style="color:var(--fg-muted);font-size:12px">Sin datos suficientes.</div>`;
-  } else {
-    rankDiv.innerHTML = ranking.map(r=>`
-      <div class="ranking-row">
-        <div style="font-size:11px;min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${secMap[r.sid]||r.sid}">${secMap[r.sid]||r.sid}</div>
-        <div class="ranking-bar-wrap"><div class="ranking-bar" style="width:${r.pct}%"></div></div>
-        <div class="ranking-pct">${r.pct}%</div>
-      </div>`).join('');
-  }
-
-  // Section KPI (avg score per section)
-  const kpiSecs = [
-    {sid:'hab_bs',  label:'Brand Stds. Hab'},
-    {sid:'hab_limp',label:'Limpieza Hab'},
-    {sid:'bano',    label:'Baño'},
-    {sid:'hab_cond',label:'Cond. Hab'},
-    {sid:'recepcion',label:'Recepción'},
-  ];
-  const secKpiDiv = document.getElementById('dash-section-kpi');
-  const secKpiData = kpiSecs.map(({sid,label})=>{
-    let pts=0, max=0;
-    for(const i of last){
-      const sec=SECTIONS.find(s=>s.id===sid); if(!sec) continue;
-      for(const item of sec.items){
-        if(!item.pts||item.esNota) continue;
-        if(HAB_SECTION_IDS.includes(sid)){
-          for(const h of i.habs){
-            const r=h.responses[item.id];
-            if(r==='na')continue;
-            max+=item.pts; if(r==='ok')pts+=item.pts;
-          }
-        } else {
-          const r=(i.generalResponses||{})[item.id];
-          if(r==='na')continue;
-          max+=item.pts; if(r==='ok')pts+=item.pts;
-        }
-      }
-    }
-    const pct = max>0?Math.round(pts/max*100):null;
-    return {label, pct};
-  }).filter(r=>r.pct!==null);
-
-  if(!secKpiData.length){
-    secKpiDiv.innerHTML=`<div style="color:var(--fg-muted);font-size:12px">Sin datos suficientes.</div>`;
-  } else {
-    secKpiDiv.innerHTML = secKpiData.map(r=>{
-      const col = r.pct>=85?'var(--ok)':r.pct>=70?'var(--warn)':'var(--danger)';
-      return `<div class="kpi-sec-row">
-        <div class="kpi-sec-name">${r.label}</div>
-        <div class="kpi-sec-bar-wrap"><div class="kpi-sec-bar" style="width:${r.pct}%;background:${col}"></div></div>
-        <div class="kpi-sec-pct" style="color:${col}">${r.pct}%</div>
-      </div>`;
-    }).join('');
-  }
-}
-
 function scoreColor(v){
   if(v===null) return 'var(--fg-muted)';
   return v>=85?'var(--ok)':v>=70?'var(--warn)':'var(--danger)';
