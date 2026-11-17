@@ -296,6 +296,8 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--fg);font-size
 
 /* extras row */
 .el-extra{display:none;padding:8px 12px 10px;background:var(--surface-2);border-bottom:1px solid var(--border);}
+.el-extra.evid:not(.is-no) .only-no{display:none}
+.evid-lbl{flex-basis:100%;font-size:11px;font-weight:600;color:var(--fg-muted)}
 .el-extra.vis{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;}
 .cat-toggle{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap;}
 .cat-btn{font-size:11px;padding:3px 9px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface);color:var(--fg);cursor:pointer;transition:all .15s;}
@@ -598,17 +600,21 @@ const SECTIONS = [
     {id:'hue5',name:'Experiencia positiva compartida por huésped (descripción):',ref:'EXPERIENCIA',pts:0,urg:'baja',diario:true,esNota:true},
     {id:'hue6',name:'Oportunidad de mejora identificada en interacción (descripción):',ref:'EXPERIENCIA',pts:0,urg:'baja',diario:true,esNota:true},
   ]},
-  {id:'lavanderia',icon:'🧺',title:'Lavandería, Roperías y Bodegas',sub:'Cleanliness + Condition · Soporte operativo',items:[
+  {id:'lavanderia',icon:'🧺',title:'Lavandería, Roperías y Bodegas',sub:'Cleanliness + Condition · Soporte operativo · En Guardia Diaria: carritos, bodegas y roperías (con evidencia fotográfica)',items:[
     {id:'lv1',name:'Lavadoras y secadoras limpias y funcionando',ref:'LIMPIEZA',pts:3,urg:'alta',diario:false},
     {id:'lv2',name:'Área general limpia y sin residuos',ref:'LIMPIEZA',pts:2,urg:'media',diario:false},
     {id:'lv3',name:'Suministros de lavandería abastecidos',ref:'BRAND',pts:2,urg:'media',diario:false},
     {id:'lv4',name:'Carrito de camarista completo y limpio',ref:'LIMPIEZA',pts:2,urg:'media',diario:true},
     {id:'lv5',name:'Inventario de ropa de cama suficiente',ref:'BRAND',pts:3,urg:'alta',diario:false},
     {id:'lv6',name:'Sin mezcla de ropa sucia/limpia',ref:'LIMPIEZA',pts:2,urg:'media',diario:false},
-    {id:'lv7',name:'Bodega de mantenimiento ordenada y limpia, con herramientas y refacciones identificadas',ref:'LIMPIEZA',pts:2,urg:'media',diario:false},
-    {id:'lv8',name:'Bodega de mantenimiento con productos químicos bajo control',ref:'BRAND',pts:2,urg:'alta',diario:false},
-    {id:'lv9',name:'Roperías de pisos ordenadas y con inventario de blancos completo',ref:'BRAND',pts:3,urg:'alta',diario:false},
-    {id:'lv10',name:'Roperías de pisos limpias, sin ropa sucia mezclada',ref:'LIMPIEZA',pts:2,urg:'media',diario:false},
+    {id:'lv7',name:'Bodega de mantenimiento ordenada y limpia, con herramientas y refacciones identificadas',ref:'LIMPIEZA',pts:2,urg:'media',diario:true,evid:true},
+    {id:'lv8',name:'Bodega de mantenimiento con productos químicos bajo control',ref:'BRAND',pts:2,urg:'alta',diario:true,evid:true},
+    {id:'lv11',name:'Bodega de lavandería / ama de llaves ordenada y limpia',ref:'LIMPIEZA',pts:2,urg:'media',diario:true,evid:true},
+    {id:'lv12',name:'Cuarto de bombas ordenado y limpio, sin objetos almacenados',ref:'LIMPIEZA',pts:2,urg:'media',diario:true,evid:true},
+    {id:'lv13',name:'Cuarto de bombas de alberca ordenado y limpio, sin objetos almacenados',ref:'LIMPIEZA',pts:2,urg:'media',diario:true,evid:true},
+    {id:'lv14',name:'Transformador: área limpia, acceso libre y sin objetos almacenados',ref:'CONDICION',pts:2,urg:'alta',diario:true,evid:true},
+    {id:'lv9',name:'Roperías (todas las del hotel): orden general e inventario de blancos completo',ref:'BRAND',pts:3,urg:'alta',diario:true,evid:true},
+    {id:'lv10',name:'Roperías (todas las del hotel): limpieza general, sin ropa sucia mezclada',ref:'LIMPIEZA',pts:2,urg:'media',diario:true,evid:true},
   ]},
 ];
 
@@ -1009,7 +1015,7 @@ function getVisibleSections(ins){
     if(ins.modo!=='diario' && sec.id==='huespedes') return false; // Interacción con huéspedes: solo Guardia Diaria
     if(ins.modo==='diario'){
       // Exclude secciones no aplican en guardia diaria
-      if(['ltr','hab_bs','lavanderia'].includes(sec.id))return false;
+      if(['ltr','hab_bs'].includes(sec.id))return false;
       if(sec.isLTR)return false;
       if(sec.diarioExclude)return false; // marca explícita (desayuno)
       return sec.items.some(i=>i.diario);
@@ -1221,7 +1227,7 @@ function renderSection(sec, hab){
     const nota = store.notas[item.id]||'';
     const fotos = store.fotos[item.id]||[];
     const noConf = resp==='no';
-    const showExtra = noConf||nota||fotos.length>0;
+    const showExtra = noConf||nota||fotos.length>0||!!item.evid;
     const ptsLabel = item.pts>0?` · ${item.pts}pts`:'';
     // foto thumbs
     const thumbs = fotos.map((src,fi)=>`
@@ -1260,8 +1266,9 @@ function renderSection(sec, hab){
       </div></td>
     </tr>
     <tr><td colspan="3" style="padding:0">
-      <div class="el-extra ${showExtra?'vis':''}" id="ex-${item.id}">
-        <textarea placeholder="Nota / observación…" rows="2"
+      <div class="el-extra ${showExtra?'vis':''} ${item.evid?'evid':''} ${noConf?'is-no':''}" id="ex-${item.id}">
+        ${item.evid?'<div class="evid-lbl">📷 Evidencia fotográfica diaria — documenta que está limpia y en orden</div>':''}
+        <textarea class="only-no" placeholder="Nota / observación…" rows="2"
           oninput="setNota('${item.id}',this.value,${genMode?1:0})">${nota}</textarea>
         <div>
           <div class="foto-strip" id="fotos-${item.id}">
@@ -1272,7 +1279,7 @@ function renderSection(sec, hab){
             </div>
           </div>
           <div style="font-size:9px;color:var(--fg-muted);margin-top:2px">${fotos.length>0?fotos.length+' foto(s)':''}</div>
-          <div style="margin-top:6px">
+          <div class="only-no" style="margin-top:6px">
             <div class="cat-label">Tipo de hallazgo</div>
             <div class="cat-toggle">
               <button class="cat-btn ${(cur.categorias||{})[item.id]==='mantenimiento'?'sel-mant':''}" onclick="setCat('${item.id}','mantenimiento',${genMode?1:0},${genMode?'null':`'${hab?hab.id:''}'`})">🔧 Mantenimiento</button>
@@ -1322,7 +1329,11 @@ function setResp(itemId, val, gen){
   const s = _getItemStore(gen);
   s.responses[itemId]=val;
   // Si deja de ser "No": se descartan nota, fotos y tipo de hallazgo, y se oculta el panel
-  if(val!=='no'){
+  const _it=SECTIONS.flatMap(x=>x.items).find(x=>x.id===itemId);
+  const _evid=!!(_it&&_it.evid);
+  if(val==='ok'&&_evid){ // evidencia: conserva fotos, limpia nota/categoría de hallazgo
+    s.notas[itemId]=''; if(cur.categorias) delete cur.categorias[itemId];
+  } else if(val!=='no'){
     s.notas[itemId]=''; s.fotos[itemId]=[];
     if(cur.categorias) delete cur.categorias[itemId];
     const ta=document.querySelector('#ex-'+itemId+' textarea'); if(ta) ta.value='';
@@ -1340,7 +1351,7 @@ function setResp(itemId, val, gen){
       if(i===2&&val==='na')b.classList.add('sel-na');
     });
     const ex = document.getElementById('ex-'+itemId);
-    if(ex){ if(val==='no') ex.classList.add('vis'); else { refreshFotos(itemId, gen); ex.classList.remove('vis'); } }
+    if(ex){ ex.classList.toggle('is-no',val==='no'); if(val==='no'||(_evid&&val!=='na')) ex.classList.add('vis'); else { refreshFotos(itemId, gen); ex.classList.remove('vis'); } }
   }
   updateSidebar();
   updateBanners(calcScore(cur));
@@ -1422,7 +1433,8 @@ function refreshFotos(itemId, gen){
     📷<input type="file" accept="image/*" capture="environment" multiple onchange="handleFotos('${itemId}',this,${gen?1:0})">
   </div>`;
   const ex = document.getElementById('ex-'+itemId);
-  if(ex) ex.classList.toggle('vis', fotos.length>0 || !!s.notas[itemId] || s.responses[itemId]==='no');
+  const _ev=SECTIONS.flatMap(x=>x.items).find(x=>x.id===itemId);
+  if(ex) ex.classList.toggle('vis', fotos.length>0 || !!s.notas[itemId] || s.responses[itemId]==='no' || (!!(_ev&&_ev.evid)&&s.responses[itemId]!=='na'));
 }
 
 function delFoto(itemId, idx, gen){
@@ -2421,6 +2433,15 @@ function collectPendientes(){
   const o={critica:0,alta:1,media:2,baja:3};
   return out.sort((a,b)=>(o[a.item.urg]??9)-(o[b.item.urg]??9));
 }
+function collectEvidencia(){
+  const genR=cur.generalResponses||cur.habs[0]?.responses||{}, genF=cur.generalFotos||{};
+  const out=[];
+  for(const sec of getVisibleSections()) for(const it of getSectionItems(sec)){
+    if(!it.evid)continue; const r=genR[it.id]||'';
+    if(r==='ok') out.push({item:it,sec:sec.title,fotos:genF[it.id]||[]});
+  }
+  return out;
+}
 async function buildFotoReport(){
   if(!window.jspdf)return null;
   const {jsPDF}=window.jspdf; const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'letter'});
@@ -2436,7 +2457,8 @@ async function buildFotoReport(){
   doc.setFont('helvetica','normal');doc.setFontSize(9);
   doc.text(`${prop} · ${tipo} · ${cur.fecha} · Supervisor: ${cur.inspector||'—'}`,M,18);
   y=30;
-  if(!pend.length){doc.setTextColor(61,138,91);doc.setFontSize(12);doc.text('✓ Sin deficiencias registradas.',M,y+6);footer();return {filename:`Reporte_Fotografico_${cur.propiedad}_${cur.fecha}.pdf`,blob:doc.output('blob')};}
+  const evid=collectEvidencia();
+  if(!pend.length){doc.setTextColor(61,138,91);doc.setFontSize(12);doc.text('✓ Sin deficiencias registradas.',M,y+6);y+=14;}
   const urg={critica:'CRÍTICA',alta:'ALTA',media:'MEDIA',baja:'BAJA'};
   const col={critica:[192,57,43],alta:[217,119,6],media:[212,160,23],baja:[61,138,91]};
   let n=0;
@@ -2467,6 +2489,27 @@ async function buildFotoReport(){
       y+=ch+4;
     } else { doc.setFontSize(8);doc.setTextColor(150,150,150);doc.text('Sin fotografía',M,y+1);y+=5; }
     doc.setDrawColor(220,220,215);doc.line(M,y,PW-M,y);y+=5;
+  }
+  if(evid.length){
+    need(20); doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(61,138,91);
+    doc.text('EVIDENCIA DIARIA — Bodegas y roperías conformes',M,y+4);y+=10;
+    for(const e of evid){
+      need(54);
+      doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(40,40,40);
+      const tl=doc.splitTextToSize('✓ '+e.item.name,CW);doc.text(tl,M,y+3);y+=tl.length*4.2+3;
+      if(e.fotos.length){
+        const cw=(CW-8)/3,ch=40;let x=M;
+        for(let i=0;i<e.fotos.length;i++){
+          if(i>0&&i%3===0){y+=ch+3;need(ch+4);x=M;}
+          const f=await fotoData(e.fotos[i]);
+          if(f){const k=Math.min(cw/f.w,ch/f.h);doc.addImage(f.d,'JPEG',x,y,f.w*k,f.h*k);}
+          else{doc.setFillColor(225,225,225);doc.rect(x,y,cw,ch,'F');}
+          x+=cw+4;
+        }
+        y+=ch+4;
+      } else {doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(192,57,43);doc.text('Sin evidencia fotográfica',M,y+1);y+=6;}
+      doc.setDrawColor(220,220,215);doc.line(M,y,PW-M,y);y+=5;
+    }
   }
   footer();
   return {filename:`Reporte_Fotografico_${cur.propiedad}_${cur.fecha}.pdf`,blob:doc.output('blob')};
